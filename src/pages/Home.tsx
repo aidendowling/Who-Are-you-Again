@@ -11,10 +11,18 @@ function ButtonGlobal() {
 
   // Generate cursor positions in concentric circles - with visual richness and performance
   const cursors = useMemo(() => {
-    const cursors = [];
-    // Smaller circle radii for iPhone 16
-    const circles = [80, 120]; // Only 2 circles, closer to button
-    const cursorsPerCircle = [6, 10]; // Fewer cursors
+    const cursors: Array<{
+      id: string;
+      finalX: number;
+      finalY: number;
+      delay: number;
+      rotation: number;
+      isTrail: boolean;
+      opacity: number;
+      scale: number;
+    }> = [];
+    const circles = [80, 120];
+    const cursorsPerCircle = [6, 10];
 
     circles.forEach((radius, circleIndex) => {
       const count = cursorsPerCircle[circleIndex];
@@ -90,14 +98,14 @@ function ButtonGlobal() {
         animate={
           isHovered || isActive
             ? {
-                opacity: [0, 0.6, 0],
-                scale: [1, 1.05, 1],
-                boxShadow: [
-                  "0 0 0px rgba(255,255,255,0)",
-                  "0 0 20px rgba(255,255,255,0.4)",
-                  "0 0 0px rgba(255,255,255,0)",
-                ],
-              }
+              opacity: [0, 0.6, 0],
+              scale: [1, 1.05, 1],
+              boxShadow: [
+                "0 0 0px rgba(255,255,255,0)",
+                "0 0 20px rgba(255,255,255,0.4)",
+                "0 0 0px rgba(255,255,255,0)",
+              ],
+            }
             : {}
         }
         transition={{
@@ -142,21 +150,21 @@ function ButtonGlobal() {
                 animate={
                   isExiting
                     ? {
-                        x: 0,
-                        y: 0,
-                        opacity: 0,
-                        scale: 0,
-                      }
+                      x: 0,
+                      y: 0,
+                      opacity: 0,
+                      scale: 0,
+                    }
                     : {
-                        x: cursor.finalX,
-                        y: cursor.finalY,
-                        opacity: cursor.isTrail
-                          ? cursor.opacity
-                          : [1, 0.8, 1],
-                        scale: cursor.isTrail
-                          ? cursor.scale
-                          : [1, 1.1, 1],
-                      }
+                      x: cursor.finalX,
+                      y: cursor.finalY,
+                      opacity: cursor.isTrail
+                        ? cursor.opacity
+                        : [1, 0.8, 1],
+                      scale: cursor.isTrail
+                        ? cursor.scale
+                        : [1, 1.1, 1],
+                    }
                 }
                 exit={{
                   x: 0,
@@ -168,27 +176,27 @@ function ButtonGlobal() {
                 transition={
                   isExiting
                     ? {
-                        duration: 1,
-                        ease: "easeInOut",
-                      }
+                      duration: 1,
+                      ease: "easeInOut",
+                    }
                     : {
-                        duration: 0.08,
-                        delay: cursor.delay,
-                        ease: "easeOut",
-                        type: "spring",
-                        damping: 25,
-                        stiffness: 400,
-                        opacity: {
-                          duration: cursor.isTrail ? 0.08 : 2,
-                          repeat: cursor.isTrail ? 0 : Infinity,
-                          ease: "easeInOut",
-                        },
-                        scale: {
-                          duration: cursor.isTrail ? 0.08 : 2,
-                          repeat: cursor.isTrail ? 0 : Infinity,
-                          ease: "easeInOut",
-                        },
-                      }
+                      duration: 0.08,
+                      delay: cursor.delay,
+                      ease: "easeOut",
+                      type: "spring",
+                      damping: 25,
+                      stiffness: 400,
+                      opacity: {
+                        duration: cursor.isTrail ? 0.08 : 2,
+                        repeat: cursor.isTrail ? 0 : Infinity,
+                        ease: "easeInOut",
+                      },
+                      scale: {
+                        duration: cursor.isTrail ? 0.08 : 2,
+                        repeat: cursor.isTrail ? 0 : Infinity,
+                        ease: "easeInOut",
+                      },
+                    }
                 }
               >
                 <MousePointer
