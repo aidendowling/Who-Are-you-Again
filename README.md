@@ -1,9 +1,8 @@
+ ݁₊⊹. ݁ʚ hi ɞ. ⟡ ݁.⊹
+ Let's build an app that helps everybody learn each other's names!
+ WH0 R U AGA1N?? <3
 
-  # Button effect (Community)
-
-  This is a code bundle for Button effect (Community). The original project is available at https://www.figma.com/design/TxFfZXcJR5d6I32ewvVykG/Button-effect--Community-.
-
-  ## Running the code
+## Running the code
 
   Run `npm i` to install the dependencies.
 
