@@ -131,10 +131,16 @@
     font-feature-settings: var(--default-font-feature-settings, normal);
     font-variation-settings: var(--default-font-variation-settings, normal);
     -webkit-tap-highlight-color: transparent;
+    height: 100%;
   }
 
   body {
     line-height: inherit;
+    height: 100%;
+  }
+
+  #root {
+    height: 100%;
   }
 
   hr {
