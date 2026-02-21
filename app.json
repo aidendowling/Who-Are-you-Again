@@ -1,0 +1,54 @@
+{
+    "expo": {
+        "name": "Wh0 R U Aga1n?",
+        "slug": "wh0-r-u-aga1n",
+        "version": "1.0.0",
+        "orientation": "portrait",
+        "icon": "./assets/icon.png",
+        "userInterfaceStyle": "light",
+        "newArchEnabled": true,
+        "splash": {
+            "image": "./assets/splash-icon.png",
+            "resizeMode": "contain",
+            "backgroundColor": "#ffffff"
+        },
+        "ios": {
+            "supportsTablet": true,
+            "bundleIdentifier": "com.wh0ruaga1n.app",
+            "infoPlist": {
+                "NSCameraUsageDescription": "This app uses the camera to scan QR codes for classroom check-in."
+            }
+        },
+        "android": {
+            "adaptiveIcon": {
+                "foregroundImage": "./assets/adaptive-icon.png",
+                "backgroundColor": "#ffffff"
+            },
+            "package": "com.wh0ruaga1n.app",
+            "permissions": [
+                "android.permission.CAMERA"
+            ]
+        },
+        "web": {
+            "favicon": "./assets/favicon.png"
+        },
+        "scheme": "wh0ruaga1n",
+        "plugins": [
+            [
+                "expo-router",
+                {
+                    "root": "./src/app"
+                }
+            ],
+            [
+                "expo-camera",
+                {
+                    "cameraPermission": "Allow Wh0 R U Aga1n to access your camera for QR code scanning."
+                }
+            ]
+        ],
+        "experiments": {
+            "typedRoutes": true
+        }
+    }
+}
