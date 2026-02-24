@@ -5,6 +5,7 @@ import {
     Pressable,
     ScrollView,
     StyleSheet,
+    Image,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -25,6 +26,8 @@ interface StudentInfo {
     id: string;
     name: string;
     emoji: string;
+    avatarType: string;
+    avatarUri: string | null;
     major: string;
     year: string;
     interests: string;
@@ -58,6 +61,8 @@ export default function ClassroomScreen() {
                         id: doc.id,
                         name: data.name || "Anonymous",
                         emoji: data.emoji || "😊",
+                        avatarType: data.avatarType || "emoji",
+                        avatarUri: data.avatarUri || null,
                         major: data.major || "",
                         year: data.year || "",
                         interests: data.interests || "",
@@ -96,6 +101,8 @@ export default function ClassroomScreen() {
             await setDoc(doc(db, "rooms", roomId, "checkins", TEST_USER_ID), {
                 name: profileData.name || "Student",
                 emoji: profileData.emoji || "😊",
+                avatarType: profileData.avatarType || "emoji",
+                avatarUri: profileData.avatarUri || null,
                 major: profileData.major || "",
                 year: profileData.year || "",
                 interests: profileData.interests || "",
@@ -155,7 +162,11 @@ export default function ClassroomScreen() {
                     <View style={styles.profileCard}>
                         <Text style={styles.sectionLabel}>YOU</Text>
                         <View style={styles.profileRow}>
-                            <Text style={styles.profileEmoji}>{profile.emoji}</Text>
+                            {profile.avatarType === "photo" && profile.avatarUri ? (
+                                <Image source={{ uri: profile.avatarUri }} style={styles.profilePhoto} />
+                            ) : (
+                                <Text style={styles.profileEmoji}>{profile.emoji}</Text>
+                            )}
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.profileName}>{profile.name}</Text>
                                 {profile.major ? (
@@ -199,7 +210,11 @@ export default function ClassroomScreen() {
                     ) : (
                         students.map((student) => (
                             <View key={student.id} style={styles.studentCard}>
-                                <Text style={styles.studentEmoji}>{student.emoji}</Text>
+                                {student.avatarType === "photo" && student.avatarUri ? (
+                                    <Image source={{ uri: student.avatarUri }} style={styles.studentPhoto} />
+                                ) : (
+                                    <Text style={styles.studentEmoji}>{student.emoji}</Text>
+                                )}
                                 <View style={{ flex: 1 }}>
                                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                                         <Text style={styles.studentName}>{student.name}</Text>
@@ -332,6 +347,11 @@ const styles = StyleSheet.create({
     profileEmoji: {
         fontSize: 36,
     },
+    profilePhoto: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+    },
     profileName: {
         fontSize: 18,
         fontWeight: "700",
@@ -432,6 +452,11 @@ const styles = StyleSheet.create({
     },
     studentEmoji: {
         fontSize: 28,
+    },
+    studentPhoto: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
     },
     studentName: {
         fontSize: 16,

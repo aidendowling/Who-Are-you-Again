@@ -8,17 +8,22 @@ import {
     StyleSheet,
     KeyboardAvoidingView,
     Platform,
+    Image,
+    Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { db } from "../config/firebase";
 import { doc, setDoc, getDoc } from "firebase/firestore";
+import * as ImagePicker from "expo-image-picker";
 
 const EMOJI_OPTIONS = ["😊", "🤓", "😎", "🧑‍💻", "🎨", "🎵", "⚡", "🌟", "🦊", "🐱", "🌈", "🔥", "💡", "📚", "🎮", "🏀"];
 const YEAR_OPTIONS = ["Freshman", "Sophomore", "Junior", "Senior", "Grad Student"];
 
 // Use a fixed test userId for now (would come from auth in production)
 const TEST_USER_ID = "test-user-001";
+
+type AvatarType = "emoji" | "photo";
 
 export default function ProfileScreen() {
     const router = useRouter();
@@ -28,6 +33,8 @@ export default function ProfileScreen() {
     const [interests, setInterests] = useState("");
     const [funFact, setFunFact] = useState("");
     const [emoji, setEmoji] = useState("😊");
+    const [avatarType, setAvatarType] = useState<AvatarType>("emoji");
+    const [avatarUri, setAvatarUri] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isLoaded, setIsLoaded] = useState(false);
 
@@ -51,11 +58,44 @@ export default function ProfileScreen() {
                 setInterests(data.interests || "");
                 setFunFact(data.funFact || "");
                 setEmoji(data.emoji || "😊");
+                setAvatarType(data.avatarType || "emoji");
+                setAvatarUri(data.avatarUri || null);
             }
         } catch (e) {
             console.log("Could not load profile:", e);
         }
         setIsLoaded(true);
+    };
+
+    const pickImage = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+            Alert.alert("Permission needed", "Please allow access to your photo library to upload a profile picture.");
+            return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ["images"],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.5,
+            base64: true,
+        });
+
+        if (!result.canceled && result.assets[0]) {
+            const asset = result.assets[0];
+            if (asset.base64) {
+                const mimeType = asset.mimeType || "image/jpeg";
+                const dataUri = `data:${mimeType};base64,${asset.base64}`;
+                setAvatarUri(dataUri);
+                setAvatarType("photo");
+            }
+        }
+    };
+
+    const removePhoto = () => {
+        setAvatarUri(null);
+        setAvatarType("emoji");
     };
 
     const saveAndContinue = async () => {
@@ -70,6 +110,8 @@ export default function ProfileScreen() {
                 interests: interests.trim(),
                 funFact: funFact.trim(),
                 emoji,
+                avatarType,
+                avatarUri: avatarType === "photo" ? avatarUri : null,
                 updatedAt: new Date().toISOString(),
             });
         } catch (e) {
@@ -107,24 +149,92 @@ export default function ProfileScreen() {
                         </Text>
                     </View>
 
-                    {/* Emoji Picker */}
-                    <View style={styles.section}>
-                        <Text style={styles.label}>pick your avatar</Text>
-                        <View style={styles.emojiGrid}>
-                            {EMOJI_OPTIONS.map((e) => (
-                                <Pressable
-                                    key={e}
-                                    onPress={() => setEmoji(e)}
-                                    style={[
-                                        styles.emojiOption,
-                                        emoji === e && styles.emojiSelected,
-                                    ]}
-                                >
-                                    <Text style={styles.emojiText}>{e}</Text>
-                                </Pressable>
-                            ))}
+                    {/* Avatar Preview */}
+                    <View style={styles.avatarPreviewContainer}>
+                        <View style={styles.avatarCircle}>
+                            {avatarType === "photo" && avatarUri ? (
+                                <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+                            ) : (
+                                <Text style={styles.avatarEmoji}>{emoji}</Text>
+                            )}
                         </View>
                     </View>
+
+                    {/* Avatar Type Tabs */}
+                    <View style={styles.tabContainer}>
+                        <Pressable
+                            onPress={() => setAvatarType("emoji")}
+                            style={[styles.tab, avatarType === "emoji" && styles.tabActive]}
+                        >
+                            <Text style={[styles.tabText, avatarType === "emoji" && styles.tabTextActive]}>
+                                preset icons
+                            </Text>
+                        </Pressable>
+                        <Pressable
+                            onPress={() => {
+                                if (avatarUri) {
+                                    setAvatarType("photo");
+                                } else {
+                                    pickImage();
+                                }
+                            }}
+                            style={[styles.tab, avatarType === "photo" && styles.tabActive]}
+                        >
+                            <Text style={[styles.tabText, avatarType === "photo" && styles.tabTextActive]}>
+                                upload photo
+                            </Text>
+                        </Pressable>
+                    </View>
+
+                    {/* Emoji Grid (shown when emoji tab is active) */}
+                    {avatarType === "emoji" && (
+                        <View style={styles.section}>
+                            <View style={styles.emojiGrid}>
+                                {EMOJI_OPTIONS.map((e) => (
+                                    <Pressable
+                                        key={e}
+                                        onPress={() => setEmoji(e)}
+                                        style={[
+                                            styles.emojiOption,
+                                            emoji === e && styles.emojiSelected,
+                                        ]}
+                                    >
+                                        <Text style={styles.emojiText}>{e}</Text>
+                                    </Pressable>
+                                ))}
+                            </View>
+                        </View>
+                    )}
+
+                    {/* Photo Upload (shown when photo tab is active) */}
+                    {avatarType === "photo" && (
+                        <View style={styles.section}>
+                            <View style={styles.photoActions}>
+                                <Pressable
+                                    onPress={pickImage}
+                                    style={({ pressed }) => [
+                                        styles.photoButton,
+                                        pressed && { transform: [{ scale: 0.97 }] },
+                                    ]}
+                                >
+                                    <Text style={styles.photoButtonText}>
+                                        {avatarUri ? "📷  change photo" : "📷  choose from library"}
+                                    </Text>
+                                </Pressable>
+                                {avatarUri && (
+                                    <Pressable
+                                        onPress={removePhoto}
+                                        style={({ pressed }) => [
+                                            styles.removeButton,
+                                            pressed && { transform: [{ scale: 0.97 }] },
+                                        ]}
+                                    >
+                                        <Text style={styles.removeButtonText}>remove photo</Text>
+                                    </Pressable>
+                                )}
+                            </View>
+                        </View>
+                    )}
 
                     {/* Name */}
                     <View style={styles.section}>
@@ -208,7 +318,11 @@ export default function ProfileScreen() {
                         <View style={styles.previewCard}>
                             <Text style={styles.previewLabel}>preview</Text>
                             <View style={styles.previewContent}>
-                                <Text style={styles.previewEmoji}>{emoji}</Text>
+                                {avatarType === "photo" && avatarUri ? (
+                                    <Image source={{ uri: avatarUri }} style={styles.previewImage} />
+                                ) : (
+                                    <Text style={styles.previewEmoji}>{emoji}</Text>
+                                )}
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.previewName}>{name}</Text>
                                     {major ? (
@@ -259,7 +373,7 @@ const styles = StyleSheet.create({
         color: "#999",
     },
     header: {
-        marginBottom: 32,
+        marginBottom: 24,
         marginTop: 8,
     },
     title: {
@@ -272,6 +386,53 @@ const styles = StyleSheet.create({
         fontSize: 15,
         color: "#666",
         lineHeight: 22,
+    },
+    avatarPreviewContainer: {
+        alignItems: "center",
+        marginBottom: 20,
+    },
+    avatarCircle: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        backgroundColor: "#f5f5f5",
+        justifyContent: "center",
+        alignItems: "center",
+        borderWidth: 3,
+        borderColor: "#000",
+        overflow: "hidden",
+    },
+    avatarImage: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+    },
+    avatarEmoji: {
+        fontSize: 48,
+    },
+    tabContainer: {
+        flexDirection: "row",
+        marginBottom: 16,
+        backgroundColor: "#f5f5f5",
+        borderRadius: 12,
+        padding: 4,
+    },
+    tab: {
+        flex: 1,
+        paddingVertical: 10,
+        borderRadius: 10,
+        alignItems: "center",
+    },
+    tabActive: {
+        backgroundColor: "#000",
+    },
+    tabText: {
+        fontSize: 14,
+        fontWeight: "600",
+        color: "#666",
+    },
+    tabTextActive: {
+        color: "#fff",
     },
     section: {
         marginBottom: 24,
@@ -319,6 +480,33 @@ const styles = StyleSheet.create({
     emojiText: {
         fontSize: 24,
     },
+    photoActions: {
+        gap: 10,
+    },
+    photoButton: {
+        backgroundColor: "#f5f5f5",
+        paddingVertical: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: "#eee",
+        borderStyle: "dashed",
+    },
+    photoButtonText: {
+        textAlign: "center",
+        fontSize: 15,
+        color: "#333",
+        fontWeight: "500",
+    },
+    removeButton: {
+        paddingVertical: 10,
+        borderRadius: 10,
+    },
+    removeButtonText: {
+        textAlign: "center",
+        fontSize: 14,
+        color: "#e53e3e",
+        fontWeight: "500",
+    },
     yearGrid: {
         flexDirection: "row",
         flexWrap: "wrap",
@@ -364,6 +552,11 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: 12,
+    },
+    previewImage: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
     },
     previewEmoji: {
         fontSize: 40,

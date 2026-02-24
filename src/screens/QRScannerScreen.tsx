@@ -43,6 +43,7 @@ export default function QRScannerScreen() {
     const [permission, requestPermission] = useCameraPermissions();
     const [isScanning, setIsScanning] = useState(false);
     const [scannedData, setScannedData] = useState<string | null>(null);
+    const [cameraKey, setCameraKey] = useState(0);
 
     const startScanning = async () => {
         if (!permission?.granted) {
@@ -51,11 +52,14 @@ export default function QRScannerScreen() {
                 return;
             }
         }
+        setCameraKey((k) => k + 1);
+        setScannedData(null);
         setIsScanning(true);
     };
 
     const stopScanning = () => {
         setIsScanning(false);
+        setScannedData(null);
     };
 
     const handleBarcodeScanned = ({ data }: { data: string }) => {
@@ -129,6 +133,7 @@ export default function QRScannerScreen() {
                         <View style={{ gap: 16 }}>
                             <View style={styles.cameraContainer}>
                                 <CameraView
+                                    key={cameraKey}
                                     style={StyleSheet.absoluteFill}
                                     facing="back"
                                     barcodeScannerSettings={{
