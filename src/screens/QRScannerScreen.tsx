@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import Animated, {
@@ -38,12 +38,49 @@ function ScanningOverlay() {
     );
 }
 
+/** Isolated camera component — unmounting fully releases camera hardware */
+function QRCameraScanner({ onScan }: { onScan: (data: string) => void }) {
+    const [mounted, setMounted] = useState(true);
+    const hasScanned = useRef(false);
+
+    useEffect(() => {
+        setMounted(true);
+        hasScanned.current = false;
+        return () => {
+            // Signal unmount — this triggers CameraView's native cleanup
+            setMounted(false);
+        };
+    }, []);
+
+    const handleScan = useCallback(({ data }: { data: string }) => {
+        if (!hasScanned.current) {
+            hasScanned.current = true;
+            onScan(data);
+        }
+    }, [onScan]);
+
+    if (!mounted) return null;
+
+    return (
+        <View style={styles.cameraContainer}>
+            <CameraView
+                style={StyleSheet.absoluteFill}
+                facing="back"
+                barcodeScannerSettings={{
+                    barcodeTypes: ["qr"],
+                }}
+                onBarcodeScanned={handleScan}
+            />
+            <ScanningOverlay />
+        </View>
+    );
+}
+
 export default function QRScannerScreen() {
     const router = useRouter();
     const [permission, requestPermission] = useCameraPermissions();
     const [isScanning, setIsScanning] = useState(false);
     const [scannedData, setScannedData] = useState<string | null>(null);
-    const [cameraKey, setCameraKey] = useState(0);
 
     const startScanning = async () => {
         if (!permission?.granted) {
@@ -52,7 +89,6 @@ export default function QRScannerScreen() {
                 return;
             }
         }
-        setCameraKey((k) => k + 1);
         setScannedData(null);
         setIsScanning(true);
     };
@@ -62,7 +98,7 @@ export default function QRScannerScreen() {
         setScannedData(null);
     };
 
-    const handleBarcodeScanned = ({ data }: { data: string }) => {
+    const handleBarcodeScanned = (data: string) => {
         setScannedData(data);
         setIsScanning(false);
 
@@ -101,58 +137,40 @@ export default function QRScannerScreen() {
                     {/* Initial state — scan & bypass buttons */}
                     {!isScanning && !scannedData && (
                         <View style={{ gap: 12 }}>
-                            <Pressable
+                            <TouchableOpacity
+                                activeOpacity={0.8}
                                 onPress={startScanning}
-                                style={({ pressed }) => [
-                                    styles.primaryButton,
-                                    pressed && { transform: [{ scale: 0.95 }] },
-                                ]}
+                                style={styles.primaryButton}
                             >
                                 <Text style={styles.primaryButtonText}>
                                     scan desk QR code
                                 </Text>
-                            </Pressable>
+                            </TouchableOpacity>
 
                             {/* Test bypass button */}
-                            <Pressable
+                            <TouchableOpacity
+                                activeOpacity={0.7}
                                 onPress={handleTestBypass}
-                                style={({ pressed }) => [
-                                    styles.bypassButton,
-                                    pressed && { transform: [{ scale: 0.95 }] },
-                                ]}
+                                style={styles.bypassButton}
                             >
                                 <Text style={styles.bypassButtonText}>
                                     Skip — Use Test Room
                                 </Text>
-                            </Pressable>
+                            </TouchableOpacity>
                         </View>
                     )}
 
-                    {/* Camera scanner */}
+                    {/* Camera scanner — separate component for clean lifecycle */}
                     {isScanning && (
                         <View style={{ gap: 16 }}>
-                            <View style={styles.cameraContainer}>
-                                <CameraView
-                                    key={cameraKey}
-                                    style={StyleSheet.absoluteFill}
-                                    facing="back"
-                                    barcodeScannerSettings={{
-                                        barcodeTypes: ["qr"],
-                                    }}
-                                    onBarcodeScanned={handleBarcodeScanned}
-                                />
-                                <ScanningOverlay />
-                            </View>
-
-                            <Pressable
+                            <QRCameraScanner onScan={handleBarcodeScanned} />
+                            <TouchableOpacity
+                                activeOpacity={0.7}
                                 onPress={stopScanning}
-                                style={({ pressed }) => [
-                                    styles.cancelButton,
-                                    pressed && { transform: [{ scale: 0.95 }] },
-                                ]}
+                                style={styles.cancelButton}
                             >
                                 <Text style={styles.cancelButtonText}>Cancel</Text>
-                            </Pressable>
+                            </TouchableOpacity>
                         </View>
                     )}
 
@@ -169,27 +187,23 @@ export default function QRScannerScreen() {
                                 <Text style={styles.resultData}>{scannedData}</Text>
                             </View>
 
-                            <Pressable
+                            <TouchableOpacity
+                                activeOpacity={0.8}
                                 onPress={() => setScannedData(null)}
-                                style={({ pressed }) => [
-                                    styles.primaryButton,
-                                    pressed && { transform: [{ scale: 0.95 }] },
-                                ]}
+                                style={styles.primaryButton}
                             >
                                 <Text style={styles.primaryButtonText}>Scan Another</Text>
-                            </Pressable>
+                            </TouchableOpacity>
 
-                            <Pressable
+                            <TouchableOpacity
+                                activeOpacity={0.7}
                                 onPress={handleTestBypass}
-                                style={({ pressed }) => [
-                                    styles.bypassButton,
-                                    pressed && { transform: [{ scale: 0.95 }] },
-                                ]}
+                                style={styles.bypassButton}
                             >
                                 <Text style={styles.bypassButtonText}>
                                     Enter Test Room Instead
                                 </Text>
-                            </Pressable>
+                            </TouchableOpacity>
                         </View>
                     )}
                 </View>

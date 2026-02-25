@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
     View,
     Text,
-    Pressable,
+    TouchableOpacity,
     ScrollView,
     StyleSheet,
     Image,
@@ -148,12 +148,13 @@ export default function ClassroomScreen() {
                                 Seat {seat || "—"}
                             </Text>
                         </View>
-                        <Pressable
+                        <TouchableOpacity
+                            activeOpacity={0.7}
                             onPress={() => router.dismissAll()}
                             style={styles.leaveButton}
                         >
                             <Text style={styles.leaveText}>Leave</Text>
-                        </Pressable>
+                        </TouchableOpacity>
                     </View>
                 </View>
 
@@ -267,12 +268,12 @@ function RaiseHandButton({ raised, onPress }: { raised: boolean; onPress: () => 
     }));
 
     return (
-        <Pressable
+        <TouchableOpacity
+            activeOpacity={0.8}
             onPress={onPress}
-            style={({ pressed }) => [
+            style={[
                 styles.handButton,
                 raised && styles.handButtonActive,
-                pressed && { transform: [{ scale: 0.96 }] },
             ]}
         >
             <Animated.View style={[styles.handButtonInner, wobbleStyle]}>
@@ -281,7 +282,7 @@ function RaiseHandButton({ raised, onPress }: { raised: boolean; onPress: () => 
                     {raised ? "Lower Hand" : "Raise Hand"}
                 </Text>
             </Animated.View>
-        </Pressable>
+        </TouchableOpacity>
     );
 }
 

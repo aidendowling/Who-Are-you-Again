@@ -3,7 +3,7 @@ import {
     View,
     Text,
     TextInput,
-    Pressable,
+    TouchableOpacity,
     ScrollView,
     StyleSheet,
     KeyboardAvoidingView,
@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { db } from "../config/firebase";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import * as ImagePicker from "expo-image-picker";
+import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 
 const EMOJI_OPTIONS = ["😊", "🤓", "😎", "🧑‍💻", "🎨", "🎵", "⚡", "🌟", "🦊", "🐱", "🌈", "🔥", "💡", "📚", "🎮", "🏀"];
 const YEAR_OPTIONS = ["Freshman", "Sophomore", "Junior", "Senior", "Grad Student"];
@@ -79,16 +80,24 @@ export default function ProfileScreen() {
             allowsEditing: true,
             aspect: [1, 1],
             quality: 0.5,
-            base64: true,
         });
 
         if (!result.canceled && result.assets[0]) {
-            const asset = result.assets[0];
-            if (asset.base64) {
-                const mimeType = asset.mimeType || "image/jpeg";
-                const dataUri = `data:${mimeType};base64,${asset.base64}`;
-                setAvatarUri(dataUri);
-                setAvatarType("photo");
+            try {
+                // Resize to 200x200 and convert to base64 JPEG
+                const manipulated = await manipulateAsync(
+                    result.assets[0].uri,
+                    [{ resize: { width: 200, height: 200 } }],
+                    { compress: 0.5, format: SaveFormat.JPEG, base64: true }
+                );
+                if (manipulated.base64) {
+                    const dataUri = `data:image/jpeg;base64,${manipulated.base64}`;
+                    setAvatarUri(dataUri);
+                    setAvatarType("photo");
+                }
+            } catch (e) {
+                console.log("Image processing error:", e);
+                Alert.alert("Error", "Could not process the image. Please try another photo.");
             }
         }
     };
@@ -162,15 +171,17 @@ export default function ProfileScreen() {
 
                     {/* Avatar Type Tabs */}
                     <View style={styles.tabContainer}>
-                        <Pressable
+                        <TouchableOpacity
+                            activeOpacity={0.7}
                             onPress={() => setAvatarType("emoji")}
                             style={[styles.tab, avatarType === "emoji" && styles.tabActive]}
                         >
                             <Text style={[styles.tabText, avatarType === "emoji" && styles.tabTextActive]}>
                                 preset icons
                             </Text>
-                        </Pressable>
-                        <Pressable
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            activeOpacity={0.7}
                             onPress={() => {
                                 if (avatarUri) {
                                     setAvatarType("photo");
@@ -183,7 +194,7 @@ export default function ProfileScreen() {
                             <Text style={[styles.tabText, avatarType === "photo" && styles.tabTextActive]}>
                                 upload photo
                             </Text>
-                        </Pressable>
+                        </TouchableOpacity>
                     </View>
 
                     {/* Emoji Grid (shown when emoji tab is active) */}
@@ -191,7 +202,8 @@ export default function ProfileScreen() {
                         <View style={styles.section}>
                             <View style={styles.emojiGrid}>
                                 {EMOJI_OPTIONS.map((e) => (
-                                    <Pressable
+                                    <TouchableOpacity
+                                        activeOpacity={0.7}
                                         key={e}
                                         onPress={() => setEmoji(e)}
                                         style={[
@@ -200,7 +212,7 @@ export default function ProfileScreen() {
                                         ]}
                                     >
                                         <Text style={styles.emojiText}>{e}</Text>
-                                    </Pressable>
+                                    </TouchableOpacity>
                                 ))}
                             </View>
                         </View>
@@ -210,27 +222,23 @@ export default function ProfileScreen() {
                     {avatarType === "photo" && (
                         <View style={styles.section}>
                             <View style={styles.photoActions}>
-                                <Pressable
+                                <TouchableOpacity
+                                    activeOpacity={0.7}
                                     onPress={pickImage}
-                                    style={({ pressed }) => [
-                                        styles.photoButton,
-                                        pressed && { transform: [{ scale: 0.97 }] },
-                                    ]}
+                                    style={styles.photoButton}
                                 >
                                     <Text style={styles.photoButtonText}>
                                         {avatarUri ? "📷  change photo" : "📷  choose from library"}
                                     </Text>
-                                </Pressable>
+                                </TouchableOpacity>
                                 {avatarUri && (
-                                    <Pressable
+                                    <TouchableOpacity
+                                        activeOpacity={0.7}
                                         onPress={removePhoto}
-                                        style={({ pressed }) => [
-                                            styles.removeButton,
-                                            pressed && { transform: [{ scale: 0.97 }] },
-                                        ]}
+                                        style={styles.removeButton}
                                     >
                                         <Text style={styles.removeButtonText}>remove photo</Text>
-                                    </Pressable>
+                                    </TouchableOpacity>
                                 )}
                             </View>
                         </View>
@@ -265,7 +273,8 @@ export default function ProfileScreen() {
                         <Text style={styles.label}>year</Text>
                         <View style={styles.yearGrid}>
                             {YEAR_OPTIONS.map((y) => (
-                                <Pressable
+                                <TouchableOpacity
+                                    activeOpacity={0.7}
                                     key={y}
                                     onPress={() => setYear(y)}
                                     style={[
@@ -281,7 +290,7 @@ export default function ProfileScreen() {
                                     >
                                         {y}
                                     </Text>
-                                </Pressable>
+                                </TouchableOpacity>
                             ))}
                         </View>
                     </View>
@@ -336,24 +345,26 @@ export default function ProfileScreen() {
                         </View>
                     )}
 
-                    {/* Submit Button */}
-                    <Pressable
-                        onPress={saveAndContinue}
-                        disabled={!name.trim() || isSaving}
-                        style={({ pressed }) => [
-                            styles.submitButton,
-                            !name.trim() && styles.submitDisabled,
-                            pressed && name.trim() && { transform: [{ scale: 0.97 }] },
-                        ]}
-                    >
-                        <Text style={styles.submitText}>
-                            {isSaving ? "Saving..." : "Enter Class →"}
-                        </Text>
-                    </Pressable>
-
-                    <View style={{ height: 40 }} />
+                    <View style={{ height: 100 }} />
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            {/* Fixed Footer Button */}
+            <View style={styles.footer}>
+                <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={saveAndContinue}
+                    disabled={!name.trim() || isSaving}
+                    style={[
+                        styles.submitButton,
+                        !name.trim() && styles.submitDisabled,
+                    ]}
+                >
+                    <Text style={styles.submitText}>
+                        {isSaving ? "Saving..." : "Enter Class →"}
+                    </Text>
+                </TouchableOpacity>
+            </View>
         </SafeAreaView>
     );
 }
@@ -363,8 +374,16 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: "#fff",
     },
+    footer: {
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        backgroundColor: "#fff",
+        borderTopWidth: 1,
+        borderTopColor: "#f0f0f0",
+    },
     scrollContent: {
         padding: 24,
+        paddingBottom: 40,
     },
     loadingText: {
         textAlign: "center",

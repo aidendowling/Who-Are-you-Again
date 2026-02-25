@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { View, Text, Pressable, Dimensions, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, Dimensions, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import Animated, {
     useSharedValue,
@@ -85,12 +85,10 @@ function GlassyButton({ onPress }: { onPress: () => void }) {
 
     return (
         <View style={styles.buttonWrapper}>
-            <Pressable
+            <TouchableOpacity
+                activeOpacity={0.7}
                 onPress={onPress}
-                style={({ pressed }) => [
-                    styles.buttonPressable,
-                    pressed && { transform: [{ scale: 0.95 }] },
-                ]}
+                style={styles.buttonPressable}
             >
                 <BlurView
                     intensity={40}
@@ -104,7 +102,7 @@ function GlassyButton({ onPress }: { onPress: () => void }) {
                         ݁₊⊹. ݁ʚ hi ɞ. ⟡ ݁.⊹
                     </Text>
                 </BlurView>
-            </Pressable>
+            </TouchableOpacity>
         </View>
     );
 }
