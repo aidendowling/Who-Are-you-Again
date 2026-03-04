@@ -70,10 +70,16 @@ function CircularText() {
 
 function GlassyButton({ onPress }: { onPress: () => void }) {
     const pulseOpacity = useSharedValue(0);
+    const pulseScale = useSharedValue(1);
 
     useEffect(() => {
         pulseOpacity.value = withRepeat(
-            withTiming(0.6, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+            withTiming(0.8, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+            -1,
+            true
+        );
+        pulseScale.value = withRepeat(
+            withTiming(1.08, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
             -1,
             true
         );
@@ -81,10 +87,14 @@ function GlassyButton({ onPress }: { onPress: () => void }) {
 
     const pulseStyle = useAnimatedStyle(() => ({
         opacity: pulseOpacity.value,
+        transform: [{ scale: pulseScale.value }],
     }));
 
     return (
         <View style={styles.buttonWrapper}>
+            {/* Outer glow ring */}
+            <Animated.View style={[styles.outerGlow, pulseStyle]} />
+
             <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={onPress}
@@ -92,11 +102,11 @@ function GlassyButton({ onPress }: { onPress: () => void }) {
             >
                 <BlurView
                     intensity={40}
-                    tint="light"
+                    tint="dark"
                     style={styles.blurContent}
                 >
-                    {/* Pulse glow overlay */}
-                    <Animated.View style={[styles.pulseOverlay, pulseStyle]} />
+                    {/* Inner shimmer overlay */}
+                    <Animated.View style={[styles.pulseOverlay, { opacity: 0.15 }]} />
 
                     <Text style={styles.buttonText}>
                         ݁₊⊹. ݁ʚ hi ɞ. ⟡ ݁.⊹
@@ -118,6 +128,10 @@ export default function HomeScreen() {
 
     return (
         <View style={styles.container}>
+            {/* Radial glow behind circular text */}
+            <View style={styles.radialGlow} />
+            <View style={styles.radialGlowInner} />
+
             <CircularText />
             <GlassyButton onPress={handlePress} />
         </View>
@@ -127,9 +141,23 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#ffffff",
+        backgroundColor: "#0a0a1a",
         justifyContent: "center",
         alignItems: "center",
+    },
+    radialGlow: {
+        position: "absolute",
+        width: 360,
+        height: 360,
+        borderRadius: 180,
+        backgroundColor: "rgba(124, 92, 255, 0.08)",
+    },
+    radialGlowInner: {
+        position: "absolute",
+        width: 200,
+        height: 200,
+        borderRadius: 100,
+        backgroundColor: "rgba(180, 76, 255, 0.06)",
     },
     circularTextContainer: {
         width: RADIUS * 2 + 40,
@@ -146,26 +174,42 @@ const styles = StyleSheet.create({
     charText: {
         fontSize: 32,
         fontWeight: "900",
-        color: "#000000",
+        color: "#ffffff",
+        textShadowColor: "rgba(124, 92, 255, 0.5)",
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 12,
     },
     buttonWrapper: {
         position: "absolute",
         zIndex: 20,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    outerGlow: {
+        position: "absolute",
+        width: 160,
+        height: 60,
+        borderRadius: 38,
+        backgroundColor: "rgba(124, 92, 255, 0.25)",
+        shadowColor: "#7c5cff",
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.6,
+        shadowRadius: 30,
     },
     buttonPressable: {
         borderRadius: 38,
         overflow: "hidden",
         borderWidth: 1,
-        borderColor: "rgba(255, 255, 255, 0.3)",
-        shadowColor: "#000",
+        borderColor: "rgba(124, 92, 255, 0.4)",
+        shadowColor: "#7c5cff",
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 8,
+        shadowOpacity: 0.4,
+        shadowRadius: 20,
+        elevation: 12,
     },
     blurContent: {
-        paddingHorizontal: 22,
-        paddingVertical: 12,
+        paddingHorizontal: 28,
+        paddingVertical: 14,
         borderRadius: 38,
         overflow: "hidden",
     },
@@ -175,16 +219,16 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "rgba(255, 255, 255, 0.3)",
+        backgroundColor: "rgba(124, 92, 255, 0.3)",
         borderRadius: 38,
     },
     buttonText: {
-        color: "#bfc8ff",
+        color: "#d4c4ff",
         fontSize: 20,
         textAlign: "center",
         letterSpacing: -0.7,
-        textShadowColor: "rgba(0, 0, 0, 0.3)",
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 4,
+        textShadowColor: "rgba(124, 92, 255, 0.6)",
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 8,
     },
 });
