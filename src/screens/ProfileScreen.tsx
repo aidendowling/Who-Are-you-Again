@@ -160,6 +160,7 @@ export default function ProfileScreen() {
 
                     {/* Avatar Preview */}
                     <View style={styles.avatarPreviewContainer}>
+                        <View style={styles.avatarGlow} />
                         <View style={styles.avatarCircle}>
                             {avatarType === "photo" && avatarUri ? (
                                 <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
@@ -252,7 +253,7 @@ export default function ProfileScreen() {
                             value={name}
                             onChangeText={setName}
                             placeholder="what should people call you?"
-                            placeholderTextColor="#999"
+                            placeholderTextColor="rgba(255,255,255,0.25)"
                         />
                     </View>
 
@@ -264,7 +265,7 @@ export default function ProfileScreen() {
                             value={major}
                             onChangeText={setMajor}
                             placeholder="e.g. Computer Science"
-                            placeholderTextColor="#999"
+                            placeholderTextColor="rgba(255,255,255,0.25)"
                         />
                     </View>
 
@@ -303,7 +304,7 @@ export default function ProfileScreen() {
                             value={interests}
                             onChangeText={setInterests}
                             placeholder="e.g. AI, music, hiking, cooking"
-                            placeholderTextColor="#999"
+                            placeholderTextColor="rgba(255,255,255,0.25)"
                         />
                     </View>
 
@@ -315,7 +316,7 @@ export default function ProfileScreen() {
                             value={funFact}
                             onChangeText={setFunFact}
                             placeholder="something interesting about you!"
-                            placeholderTextColor="#999"
+                            placeholderTextColor="rgba(255,255,255,0.25)"
                             multiline
                             numberOfLines={3}
                             textAlignVertical="top"
@@ -372,14 +373,14 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#fff",
+        backgroundColor: "#0a0a1a",
     },
     footer: {
         paddingHorizontal: 24,
         paddingVertical: 12,
-        backgroundColor: "#fff",
+        backgroundColor: "#0a0a1a",
         borderTopWidth: 1,
-        borderTopColor: "#f0f0f0",
+        borderTopColor: "rgba(255,255,255,0.06)",
     },
     scrollContent: {
         padding: 24,
@@ -389,37 +390,52 @@ const styles = StyleSheet.create({
         textAlign: "center",
         marginTop: 100,
         fontSize: 16,
-        color: "#999",
+        color: "rgba(255,255,255,0.4)",
     },
     header: {
-        marginBottom: 24,
+        marginBottom: 28,
         marginTop: 8,
     },
     title: {
-        fontSize: 32,
+        fontSize: 34,
         fontWeight: "900",
-        color: "#000",
+        color: "#ffffff",
         marginBottom: 8,
+        textShadowColor: "rgba(124, 92, 255, 0.3)",
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 10,
     },
     subtitle: {
         fontSize: 15,
-        color: "#666",
+        color: "rgba(255,255,255,0.5)",
         lineHeight: 22,
     },
     avatarPreviewContainer: {
         alignItems: "center",
         marginBottom: 20,
     },
+    avatarGlow: {
+        position: "absolute",
+        width: 130,
+        height: 130,
+        borderRadius: 65,
+        backgroundColor: "rgba(124, 92, 255, 0.15)",
+        top: -15,
+    },
     avatarCircle: {
         width: 100,
         height: 100,
         borderRadius: 50,
-        backgroundColor: "#f5f5f5",
+        backgroundColor: "rgba(255,255,255,0.06)",
         justifyContent: "center",
         alignItems: "center",
-        borderWidth: 3,
-        borderColor: "#000",
+        borderWidth: 2,
+        borderColor: "rgba(124, 92, 255, 0.5)",
         overflow: "hidden",
+        shadowColor: "#7c5cff",
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
     },
     avatarImage: {
         width: 100,
@@ -432,9 +448,11 @@ const styles = StyleSheet.create({
     tabContainer: {
         flexDirection: "row",
         marginBottom: 16,
-        backgroundColor: "#f5f5f5",
+        backgroundColor: "rgba(255,255,255,0.06)",
         borderRadius: 12,
         padding: 4,
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.06)",
     },
     tab: {
         flex: 1,
@@ -443,12 +461,12 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     tabActive: {
-        backgroundColor: "#000",
+        backgroundColor: "#7c5cff",
     },
     tabText: {
         fontSize: 14,
         fontWeight: "600",
-        color: "#666",
+        color: "rgba(255,255,255,0.4)",
     },
     tabTextActive: {
         color: "#fff",
@@ -459,19 +477,19 @@ const styles = StyleSheet.create({
     label: {
         fontSize: 13,
         fontWeight: "600",
-        color: "#999",
+        color: "rgba(255,255,255,0.4)",
         textTransform: "lowercase",
         marginBottom: 8,
         letterSpacing: 0.5,
     },
     input: {
-        backgroundColor: "#f5f5f5",
+        backgroundColor: "rgba(255,255,255,0.06)",
         borderRadius: 12,
         padding: 16,
         fontSize: 16,
-        color: "#000",
+        color: "#ffffff",
         borderWidth: 1,
-        borderColor: "#eee",
+        borderColor: "rgba(255,255,255,0.08)",
     },
     multilineInput: {
         minHeight: 80,
@@ -486,15 +504,15 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 12,
-        backgroundColor: "#f5f5f5",
+        backgroundColor: "rgba(255,255,255,0.06)",
         justifyContent: "center",
         alignItems: "center",
         borderWidth: 2,
         borderColor: "transparent",
     },
     emojiSelected: {
-        borderColor: "#000",
-        backgroundColor: "#f0f0ff",
+        borderColor: "#7c5cff",
+        backgroundColor: "rgba(124, 92, 255, 0.15)",
     },
     emojiText: {
         fontSize: 24,
@@ -503,17 +521,17 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     photoButton: {
-        backgroundColor: "#f5f5f5",
+        backgroundColor: "rgba(255,255,255,0.06)",
         paddingVertical: 16,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: "#eee",
+        borderColor: "rgba(124, 92, 255, 0.3)",
         borderStyle: "dashed",
     },
     photoButtonText: {
         textAlign: "center",
         fontSize: 15,
-        color: "#333",
+        color: "rgba(255,255,255,0.6)",
         fontWeight: "500",
     },
     removeButton: {
@@ -523,7 +541,7 @@ const styles = StyleSheet.create({
     removeButtonText: {
         textAlign: "center",
         fontSize: 14,
-        color: "#e53e3e",
+        color: "#f87171",
         fontWeight: "500",
     },
     yearGrid: {
@@ -535,34 +553,38 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 10,
         borderRadius: 20,
-        backgroundColor: "#f5f5f5",
+        backgroundColor: "rgba(255,255,255,0.06)",
         borderWidth: 1,
-        borderColor: "#eee",
+        borderColor: "rgba(255,255,255,0.08)",
     },
     yearSelected: {
-        backgroundColor: "#000",
-        borderColor: "#000",
+        backgroundColor: "#7c5cff",
+        borderColor: "#7c5cff",
     },
     yearText: {
         fontSize: 14,
-        color: "#333",
+        color: "rgba(255,255,255,0.5)",
         fontWeight: "500",
     },
     yearTextSelected: {
         color: "#fff",
     },
     previewCard: {
-        backgroundColor: "#fafafa",
+        backgroundColor: "rgba(255,255,255,0.06)",
         borderRadius: 16,
         padding: 16,
         marginBottom: 24,
         borderWidth: 1,
-        borderColor: "#eee",
+        borderColor: "rgba(124, 92, 255, 0.15)",
+        shadowColor: "#7c5cff",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
     },
     previewLabel: {
         fontSize: 11,
         fontWeight: "600",
-        color: "#bbb",
+        color: "rgba(255,255,255,0.3)",
         textTransform: "uppercase",
         marginBottom: 12,
         letterSpacing: 1,
@@ -583,30 +605,30 @@ const styles = StyleSheet.create({
     previewName: {
         fontSize: 18,
         fontWeight: "700",
-        color: "#000",
+        color: "#ffffff",
     },
     previewDetail: {
         fontSize: 14,
-        color: "#666",
+        color: "rgba(255,255,255,0.5)",
         marginTop: 2,
     },
     previewInterests: {
         fontSize: 13,
-        color: "#999",
+        color: "rgba(255,255,255,0.35)",
         marginTop: 4,
     },
     submitButton: {
-        backgroundColor: "#000",
+        backgroundColor: "#7c5cff",
         paddingVertical: 18,
         borderRadius: 16,
-        shadowColor: "#000",
+        shadowColor: "#7c5cff",
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 4,
+        shadowOpacity: 0.4,
+        shadowRadius: 16,
+        elevation: 8,
     },
     submitDisabled: {
-        backgroundColor: "#ccc",
+        backgroundColor: "rgba(255,255,255,0.08)",
         shadowOpacity: 0,
     },
     submitText: {
