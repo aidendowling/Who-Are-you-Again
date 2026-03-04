@@ -192,8 +192,100 @@ Home (/) → Profile (/profile) → Scanner (/scanner) → Classroom (/classroom
 
 5. **Run the app**
    - Press `i` to open in iOS Simulator
+   - Press `a` to open in Android Simulator
    - Press `w` to open in web browser
    - Scan the QR code with Expo Go on your phone
+
+---
+
+
+---
+
+### Setting Up Android Studio for Expo (Windows)
+
+To test the app on an Android Emulator, follow these steps to configure your development environment:
+
+#### 1. Install Android Studio
+
+- Download and install **Android Studio** from [developer.android.com](https://developer.android.com).
+- During installation, make sure the following are checked (usually enabled by default):
+  - **Android SDK**
+  - **Android SDK Platform**
+  - **Android Virtual Device**
+
+#### 2. Configure SDK Manager
+
+- Open Android Studio and go to **SDK Manager**.
+- Ensure **Android 13.0 (API 33)** or higher is installed as your SDK platform.
+
+#### 3. Set Environment Variables
+
+Set the following environment variables so React Native can locate the Android SDK:
+
+| Variable         | Value                                                      |
+| :--------------- | :--------------------------------------------------------- |
+| `ANDROID_HOME`   | `C:\Users\<YourUsername>\AppData\Local\Android\Sdk`    |
+
+> **Note:** Replace `<YourUsername>` with your actual Windows account name.
+
+Add these entries to your system **PATH** variable:
+
+- `%ANDROID_HOME%\emulator`
+- `%ANDROID_HOME%\platform-tools`
+
+#### 4. Verify Installation
+
+Restart your terminal and run:
+
+```bash
+adb --version
+```
+
+If it returns a version number, your environment is correctly configured for Expo.
+
+### Setting Up Android Studio for Expo (macOS)
+
+To test the app on an Android Emulator on macOS, follow these steps:
+
+#### 1. Install Android Studio
+
+- Download and install **Android Studio** from [developer.android.com](https://developer.android.com) or via Homebrew:
+
+```bash
+brew install --cask android-studio
+```
+- During installation, ensure these components are installed:
+   - **Android SDK**
+   - **Android SDK Platform**
+   - **Android Virtual Device**
+
+#### 2. Configure SDK Manager
+
+- Open Android Studio → **Preferences** → **Appearance & Behavior** → **System Settings** → **Android SDK**.
+- Ensure **Android 13.0 (API 33)** or higher is installed.
+
+#### 3. Set Environment Variables
+
+Add the Android SDK location to your shell configuration so tooling can find it. Most macOS installs use `~/Library/Android/sdk`.
+
+Add the following to your shell profile (`~/.zshrc`, `~/.zprofile`, or `~/.bash_profile`):
+
+```bash
+export ANDROID_SDK_ROOT="$HOME/Library/Android/sdk"
+export PATH="$ANDROID_SDK_ROOT/emulator:$ANDROID_SDK_ROOT/platform-tools:$PATH"
+```
+
+Apply the changes with `source ~/.zshrc` (or the file for your shell).
+
+#### 4. Verify Installation
+
+Restart your terminal and run:
+
+```bash
+adb --version
+```
+
+If it returns a version number, your environment is correctly configured for Expo on macOS.
 
 ---
 
