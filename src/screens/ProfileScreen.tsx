@@ -36,6 +36,7 @@ export default function ProfileScreen() {
     const [emoji, setEmoji] = useState("😊");
     const [avatarType, setAvatarType] = useState<AvatarType>("emoji");
     const [avatarUri, setAvatarUri] = useState<string | null>(null);
+    const [userType, setUserType] = useState<"student" | "professor">("student");
     const [isSaving, setIsSaving] = useState(false);
     const [isLoaded, setIsLoaded] = useState(false);
 
@@ -61,6 +62,7 @@ export default function ProfileScreen() {
                 setEmoji(data.emoji || "😊");
                 setAvatarType(data.avatarType || "emoji");
                 setAvatarUri(data.avatarUri || null);
+                setUserType(data.userType || "student");
             }
         } catch (e) {
             console.log("Could not load profile:", e);
@@ -121,6 +123,7 @@ export default function ProfileScreen() {
                 emoji,
                 avatarType,
                 avatarUri: avatarType === "photo" ? avatarUri : null,
+                userType,
                 updatedAt: new Date().toISOString(),
             });
         } catch (e) {
@@ -243,6 +246,31 @@ export default function ProfileScreen() {
                             </View>
                         </View>
                     )}
+                    
+                    {/* Role Selection */}
+                    <View style={styles.section}>
+                        <Text style={styles.label}>your role</Text>
+                        <View style={styles.tabContainer}>
+                            <TouchableOpacity
+                                activeOpacity={0.7}
+                                onPress={() => setUserType("student")}
+                                style={[styles.tab, userType === "student" && styles.tabActive]}
+                            >
+                                <Text style={[styles.tabText, userType === "student" && styles.tabTextActive]}>
+                                    Student
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                activeOpacity={0.7}
+                                onPress={() => setUserType("professor")}
+                                style={[styles.tab, userType === "professor" && styles.tabActive]}
+                            >
+                                <Text style={[styles.tabText, userType === "professor" && styles.tabTextActive]}>
+                                    Professor
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
 
                     {/* Name */}
                     <View style={styles.section}>

@@ -1,0 +1,164 @@
+{
+  "nodes": [
+    {
+      "id": "src/app/index.tsx",
+      "type": "file",
+      "status": "implemented"
+    },
+    {
+      "id": "src/app/scanner.tsx",
+      "type": "file",
+      "status": "implemented"
+    },
+    {
+      "id": "src/app/profile.tsx",
+      "type": "file",
+      "status": "implemented"
+    },
+    {
+      "id": "src/app/_layout.tsx",
+      "type": "file",
+      "status": "implemented"
+    },
+    {
+      "id": "src/app/classroom.tsx",
+      "type": "file",
+      "status": "implemented"
+    },
+    {
+      "id": "src/config/firebase.ts",
+      "type": "file",
+      "status": "implemented"
+    },
+    {
+      "id": "src/screens/ProfileScreen.tsx",
+      "type": "file",
+      "status": "implemented"
+    },
+    {
+      "id": "src/screens/QRScannerScreen.tsx",
+      "type": "file",
+      "status": "implemented"
+    },
+    {
+      "id": "src/screens/HomeScreen.tsx",
+      "type": "file",
+      "status": "implemented"
+    },
+    {
+      "id": "src/screens/ClassroomScreen.tsx",
+      "type": "file",
+      "status": "implemented"
+    },
+    {
+      "id": "external:firebase/firestore",
+      "type": "external",
+      "status": "third-party"
+    },
+    {
+      "id": "external:firebase/auth",
+      "type": "external",
+      "status": "third-party"
+    },
+    {
+      "id": "external:expo-image-picker",
+      "type": "external",
+      "status": "third-party"
+    },
+    {
+      "id": "external:expo-camera",
+      "type": "external",
+      "status": "third-party"
+    },
+    {
+      "id": "vision:professor_dashboard",
+      "type": "component",
+      "status": "planned",
+      "description": "Web interface for instructors"
+    },
+    {
+      "id": "vision:nfc_checkin",
+      "type": "feature",
+      "status": "planned",
+      "description": "NFC tag based identification"
+    },
+    {
+      "id": "vision:hand_raise_alert",
+      "type": "feature",
+      "status": "planned",
+      "description": "Real-time alerts for professor"
+    }
+  ],
+  "links": [
+    {
+      "source": "src/app/index.tsx",
+      "target": "src/screens/HomeScreen.tsx",
+      "type": "import"
+    },
+    {
+      "source": "src/app/scanner.tsx",
+      "target": "src/screens/QRScannerScreen.tsx",
+      "type": "import"
+    },
+    {
+      "source": "src/app/profile.tsx",
+      "target": "src/screens/ProfileScreen.tsx",
+      "type": "import"
+    },
+    {
+      "source": "src/app/classroom.tsx",
+      "target": "src/screens/ClassroomScreen.tsx",
+      "type": "import"
+    },
+    {
+      "source": "src/config/firebase.ts",
+      "target": "external:firebase/firestore",
+      "type": "dependency"
+    },
+    {
+      "source": "src/config/firebase.ts",
+      "target": "external:firebase/auth",
+      "type": "dependency"
+    },
+    {
+      "source": "src/screens/ProfileScreen.tsx",
+      "target": "src/config/firebase.ts",
+      "type": "import"
+    },
+    {
+      "source": "src/screens/ProfileScreen.tsx",
+      "target": "external:firebase/firestore",
+      "type": "dependency"
+    },
+    {
+      "source": "src/screens/ProfileScreen.tsx",
+      "target": "external:expo-image-picker",
+      "type": "dependency"
+    },
+    {
+      "source": "src/screens/QRScannerScreen.tsx",
+      "target": "external:expo-camera",
+      "type": "dependency"
+    },
+    {
+      "source": "src/screens/ClassroomScreen.tsx",
+      "target": "src/config/firebase.ts",
+      "type": "import"
+    },
+    {
+      "source": "src/screens/ClassroomScreen.tsx",
+      "target": "external:firebase/firestore",
+      "type": "dependency"
+    },
+    {
+      "source": "vision:professor_dashboard",
+      "target": "external:firebase/firestore",
+      "type": "dependency"
+    },
+    {
+      "source": "vision:professor_dashboard",
+      "target": "vision:hand_raise_alert",
+      "type": "includes"
+    }
+  ]
+}

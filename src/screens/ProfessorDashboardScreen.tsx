@@ -1,0 +1,323 @@
+import { useState, useEffect } from "react";
+import {
+    View,
+    Text,
+    TouchableOpacity,
+    ScrollView,
+    StyleSheet,
+    Image,
+    FlatList,
+} from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { db } from "../config/firebase";
+import { doc, setDoc, collection, onSnapshot, updateDoc } from "firebase/firestore";
+
+interface StudentInfo {
+    id: string;
+    name: string;
+    emoji: string;
+    avatarType: string;
+    avatarUri: string | null;
+    major: string;
+    year: string;
+    interests: string;
+    seat: string;
+    handRaised: boolean;
+}
+
+export default function ProfessorDashboardScreen() {
+    const router = useRouter();
+    const { roomId } = useLocalSearchParams<{ roomId: string }>();
+    const [students, setStudents] = useState<StudentInfo[]>([]);
+
+    useEffect(() => {
+        if (!roomId) return;
+
+        try {
+            const roomRef = collection(db, "rooms", roomId, "checkins");
+            const unsubscribe = onSnapshot(roomRef, (snapshot) => {
+                const studentList: StudentInfo[] = [];
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    // Professors might also check in, but we mainly care about students
+                    if (data.userType === "student" || !data.userType) {
+                        studentList.push({
+                            id: doc.id,
+                            name: data.name || "Anonymous",
+                            emoji: data.emoji || "😊",
+                            avatarType: data.avatarType || "emoji",
+                            avatarUri: data.avatarUri || null,
+                            major: data.major || "",
+                            year: data.year || "",
+                            interests: data.interests || "",
+                            seat: data.seat || "?",
+                            handRaised: data.handRaised || false,
+                        });
+                    }
+                });
+                setStudents(studentList);
+            });
+
+            return () => unsubscribe();
+        } catch (e) {
+            console.log("Could not listen to room:", e);
+        }
+    }, [roomId]);
+
+    const clearHandRaise = async (studentId: string) => {
+        if (!roomId) return;
+        try {
+            await updateDoc(doc(db, "rooms", roomId, "checkins", studentId), {
+                handRaised: false
+            });
+        } catch (e) {
+            console.log("Could not clear hand raise:", e);
+        }
+    };
+
+    const raisedHandsCount = students.filter(s => s.handRaised).length;
+
+    return (
+        <SafeAreaView style={styles.container}>
+            <View style={styles.header}>
+                <View>
+                    <Text style={styles.roomTitle}>
+                        {roomId === "test-room" ? "Test Classroom" : `Room ${roomId}`}
+                    </Text>
+                    <Text style={styles.dashboardLabel}>Professor Dashboard</Text>
+                </View>
+                <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => router.dismissAll()}
+                    style={styles.leaveButton}
+                >
+                    <Text style={styles.leaveText}>Clear & Exit</Text>
+                </TouchableOpacity>
+            </View>
+
+            <View style={styles.statsContainer}>
+                <View style={styles.statBox}>
+                    <Text style={styles.statValue}>{students.length}</Text>
+                    <Text style={styles.statLabel}>Students</Text>
+                </View>
+                <View style={[styles.statBox, raisedHandsCount > 0 && styles.statBoxActive]}>
+                    <Text style={[styles.statValue, raisedHandsCount > 0 && styles.statValueActive]}>
+                        {raisedHandsCount}
+                    </Text>
+                    <Text style={[styles.statLabel, raisedHandsCount > 0 && styles.statLabelActive]}>
+                        Hand Raises
+                    </Text>
+                </View>
+            </View>
+
+            <View style={styles.content}>
+                <Text style={styles.sectionLabel}>STUDENTS IN ROOM</Text>
+                
+                {students.length === 0 ? (
+                    <View style={styles.emptyState}>
+                        <Text style={styles.emptyEmoji}>👨‍🏫</Text>
+                        <Text style={styles.emptyText}>Waiting for students to join...</Text>
+                    </View>
+                ) : (
+                    <FlatList
+                        data={students}
+                        keyExtractor={(item) => item.id}
+                        renderItem={({ item }) => (
+                            <View style={[styles.studentCard, item.handRaised && styles.studentCardActive]}>
+                                {item.avatarType === "photo" && item.avatarUri ? (
+                                    <Image source={{ uri: item.avatarUri }} style={styles.studentPhoto} />
+                                ) : (
+                                    <Text style={styles.studentEmoji}>{item.emoji}</Text>
+                                )}
+                                <View style={{ flex: 1 }}>
+                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                                        <Text style={styles.studentName}>{item.name}</Text>
+                                        <View style={styles.seatBadge}>
+                                            <Text style={styles.seatText}>{item.seat}</Text>
+                                        </View>
+                                    </View>
+                                    <Text style={styles.studentDetail}>{item.major} {item.year}</Text>
+                                </View>
+                                
+                                {item.handRaised && (
+                                    <TouchableOpacity
+                                        activeOpacity={0.7}
+                                        onPress={() => clearHandRaise(item.id)}
+                                        style={styles.clearButton}
+                                    >
+                                        <Text style={styles.clearButtonText}>Clear ✋</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                        )}
+                        contentContainerStyle={styles.listContent}
+                    />
+                )}
+            </View>
+        </SafeAreaView>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: "#fff",
+    },
+    header: {
+        paddingHorizontal: 24,
+        paddingVertical: 16,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        borderBottomWidth: 1,
+        borderBottomColor: "#eee",
+    },
+    roomTitle: {
+        fontSize: 24,
+        fontWeight: "900",
+        color: "#000",
+    },
+    dashboardLabel: {
+        fontSize: 14,
+        color: "#666",
+        fontWeight: "500",
+    },
+    leaveButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: "#f5f5f5",
+    },
+    leaveText: {
+        fontSize: 14,
+        color: "#999",
+        fontWeight: "600",
+    },
+    statsContainer: {
+        flexDirection: "row",
+        padding: 24,
+        gap: 12,
+    },
+    statBox: {
+        flex: 1,
+        backgroundColor: "#f9f9f9",
+        borderRadius: 16,
+        padding: 16,
+        alignItems: "center",
+        borderWidth: 1,
+        borderColor: "#eee",
+    },
+    statBoxActive: {
+        backgroundColor: "#fff5f5",
+        borderColor: "#feb2b2",
+    },
+    statValue: {
+        fontSize: 28,
+        fontWeight: "900",
+        color: "#000",
+    },
+    statValueActive: {
+        color: "#c53030",
+    },
+    statLabel: {
+        fontSize: 12,
+        color: "#666",
+        fontWeight: "600",
+        textTransform: "uppercase",
+        marginTop: 4,
+    },
+    statLabelActive: {
+        color: "#c53030",
+    },
+    content: {
+        flex: 1,
+        paddingHorizontal: 24,
+    },
+    sectionLabel: {
+        fontSize: 11,
+        fontWeight: "700",
+        color: "#bbb",
+        textTransform: "uppercase",
+        letterSpacing: 1.5,
+        marginBottom: 16,
+    },
+    listContent: {
+        paddingBottom: 40,
+    },
+    studentCard: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        backgroundColor: "#fff",
+        borderRadius: 16,
+        padding: 12,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: "#f0f0f0",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+    studentCardActive: {
+        borderColor: "#feb2b2",
+        backgroundColor: "#fffafa",
+    },
+    studentEmoji: {
+        fontSize: 32,
+    },
+    studentPhoto: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+    },
+    studentName: {
+        fontSize: 16,
+        fontWeight: "700",
+        color: "#000",
+    },
+    seatBadge: {
+        backgroundColor: "#f0f0f0",
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 6,
+    },
+    seatText: {
+        fontSize: 10,
+        fontWeight: "800",
+        color: "#666",
+    },
+    studentDetail: {
+        fontSize: 13,
+        color: "#666",
+        marginTop: 2,
+    },
+    clearButton: {
+        backgroundColor: "#000",
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 12,
+    },
+    clearButtonText: {
+        color: "#fff",
+        fontSize: 13,
+        fontWeight: "700",
+    },
+    emptyState: {
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingBottom: 100,
+    },
+    emptyEmoji: {
+        fontSize: 48,
+        marginBottom: 16,
+    },
+    emptyText: {
+        fontSize: 16,
+        color: "#999",
+        fontWeight: "500",
+    },
+});

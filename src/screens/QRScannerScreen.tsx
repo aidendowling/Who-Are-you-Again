@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import { db } from "../config/firebase";
+import { doc, getDoc } from "firebase/firestore";
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -76,6 +78,8 @@ function QRCameraScanner({ onScan }: { onScan: (data: string) => void }) {
     );
 }
 
+const TEST_USER_ID = "test-user-001";
+
 export default function QRScannerScreen() {
     const router = useRouter();
     const [permission, requestPermission] = useCameraPermissions();
@@ -98,19 +102,48 @@ export default function QRScannerScreen() {
         setScannedData(null);
     };
 
-    const handleBarcodeScanned = (data: string) => {
+    const handleBarcodeScanned = async (data: string) => {
         setScannedData(data);
         setIsScanning(false);
 
         // Parse QR data — expected format: wh0ru://room/{roomId}/seat/{seatId}
         const match = data.match(/wh0ru:\/\/room\/(.+)\/seat\/(.+)/);
         if (match) {
-            router.push(`/classroom?roomId=${match[1]}&seat=${match[2]}`);
+            const roomId = match[1];
+            const seat = match[2];
+            
+            try {
+                const userSnap = await getDoc(doc(db, "users", TEST_USER_ID));
+                const userType = userSnap.exists() ? userSnap.data().userType : "student";
+                
+                if (userType === "professor") {
+                    router.push(`/professor?roomId=${roomId}` as any);
+                } else {
+                    router.push(`/classroom?roomId=${roomId}&seat=${seat}` as any);
+                }
+            } catch (e) {
+                console.log("Error fetching user profile:", e);
+                router.push(`/classroom?roomId=${roomId}&seat=${seat}`);
+            }
         }
     };
 
-    const handleTestBypass = () => {
-        router.push("/classroom?roomId=test-room&seat=A3");
+    const handleTestBypass = async () => {
+        const roomId = "test-room";
+        const seat = "A3";
+        
+        try {
+            const userSnap = await getDoc(doc(db, "users", TEST_USER_ID));
+            const userType = userSnap.exists() ? userSnap.data().userType : "student";
+            
+            if (userType === "professor") {
+                router.push(`/professor?roomId=${roomId}` as any);
+            } else {
+                router.push(`/classroom?roomId=${roomId}&seat=${seat}` as any);
+            }
+        } catch (e) {
+            router.push(`/classroom?roomId=${roomId}&seat=${seat}`);
+        }
     };
 
     return (

@@ -108,6 +108,7 @@ export default function ClassroomScreen() {
                 interests: profileData.interests || "",
                 seat: seat,
                 handRaised: false,
+                userType: "student",
                 checkedInAt: new Date().toISOString(),
             });
         } catch (e) {
