@@ -19,6 +19,7 @@ import Animated, {
     withSequence,
     Easing,
 } from "react-native-reanimated";
+import ClassroomStatusCard from "./ClassroomStatus";
 
 const TEST_USER_ID = "test-user-001";
 
@@ -41,6 +42,10 @@ export default function ClassroomScreen() {
     const [profile, setProfile] = useState<any>(null);
     const [handRaised, setHandRaised] = useState(false);
     const [students, setStudents] = useState<StudentInfo[]>([]);
+    const totalSeats = 140; // later pull from Firebase data
+    const occupiedSeats = students.length;
+    const availableSeats = Math.max(totalSeats - occupiedSeats, 0);
+    const raisedHandsCount = students.filter((student) => student.handRaised).length;
 
     useEffect(() => {
         loadProfile();
@@ -158,6 +163,14 @@ export default function ClassroomScreen() {
                         </TouchableOpacity>
                     </View>
                 </View>
+
+                <ClassroomStatusCard
+                    total={totalSeats}
+                    occupied={occupiedSeats}
+                    available={availableSeats}
+                    handRaised={raisedHandsCount}
+                    userRole="student"
+                />
 
                 {/* Your Profile Card */}
                 {profile && (
