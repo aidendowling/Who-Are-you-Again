@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { db } from "../config/firebase";
 import { doc, getDoc } from "firebase/firestore";
+import { ensureAnonymousUid } from "../utils/auth";
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -78,13 +79,25 @@ function QRCameraScanner({ onScan }: { onScan: (data: string) => void }) {
     );
 }
 
-const TEST_USER_ID = "test-user-001";
-
 export default function QRScannerScreen() {
     const router = useRouter();
     const [permission, requestPermission] = useCameraPermissions();
     const [isScanning, setIsScanning] = useState(false);
     const [scannedData, setScannedData] = useState<string | null>(null);
+    const [uid, setUid] = useState<string | null>(null);
+
+    useEffect(() => {
+        const initializeIdentity = async () => {
+            try {
+                const resolvedUid = await ensureAnonymousUid();
+                setUid(resolvedUid);
+            } catch (e) {
+                console.log("Could not initialize anonymous auth for scanner:", e);
+            }
+        };
+
+        initializeIdentity();
+    }, []);
 
     const startScanning = async () => {
         if (!permission?.granted) {
@@ -113,7 +126,10 @@ export default function QRScannerScreen() {
             const seat = match[2];
             
             try {
-                const userSnap = await getDoc(doc(db, "users", TEST_USER_ID));
+                const resolvedUid = uid ?? await ensureAnonymousUid();
+                if (!uid) setUid(resolvedUid);
+
+                const userSnap = await getDoc(doc(db, "users", resolvedUid));
                 const userType = userSnap.exists() ? userSnap.data().userType : "student";
                 
                 if (userType === "professor") {
@@ -122,7 +138,7 @@ export default function QRScannerScreen() {
                     router.push(`/classroom?roomId=${roomId}&seat=${seat}` as any);
                 }
             } catch (e) {
-                console.log("Error fetching user profile:", e);
+                console.log("Could not resolve user identity/profile for scanner route:", e);
                 router.push(`/classroom?roomId=${roomId}&seat=${seat}`);
             }
         }
@@ -133,7 +149,10 @@ export default function QRScannerScreen() {
         const seat = "A3";
         
         try {
-            const userSnap = await getDoc(doc(db, "users", TEST_USER_ID));
+            const resolvedUid = uid ?? await ensureAnonymousUid();
+            if (!uid) setUid(resolvedUid);
+
+            const userSnap = await getDoc(doc(db, "users", resolvedUid));
             const userType = userSnap.exists() ? userSnap.data().userType : "student";
             
             if (userType === "professor") {
@@ -142,6 +161,7 @@ export default function QRScannerScreen() {
                 router.push(`/classroom?roomId=${roomId}&seat=${seat}` as any);
             }
         } catch (e) {
+            console.log("Could not resolve user identity/profile for test bypass:", e);
             router.push(`/classroom?roomId=${roomId}&seat=${seat}`);
         }
     };
