@@ -104,6 +104,18 @@ const styles = StyleSheet.create({
     color: "#7A7A7A",
     fontWeight: "600",
   },
+  title: {
+    fontSize: 24,
+    fontFamily: 'sans-serif',
+    fontWeight: "900",
+    color: "#000",
+  },
+  percentText: {
+    fontSize: 15,
+    fontFamily: 'sans-serif',
+    color: "#666",
+    fontWeight: "700",
+  },
   progressTrack: {
     width: "100%",
     height: 16,
@@ -146,11 +158,11 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   totalValue: {
-    fontSize: 24,
-    fontFamily: serifFont,
-    fontWeight: "700",
-    color: "#111111",
-    marginBottom: 8,
+    fontSize: 28,
+    fontFamily: 'sans-serif',
+    fontWeight: "900",
+    color: "#000",
+    marginBottom: 2,
   },
   statValue: {
     fontSize: 24,
