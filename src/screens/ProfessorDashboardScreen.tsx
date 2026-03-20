@@ -78,6 +78,23 @@ export default function ProfessorDashboardScreen() {
 
     const raisedHandsCount = students.filter(s => s.handRaised).length;
 
+    // Map seat numbers to student info
+    const seatMap: { [seat: string]: StudentInfo } = {};
+    students.forEach(student => {
+        if (student.seat) {
+            seatMap[student.seat] = student;
+        }
+    });
+
+    // Get ordered raised hands
+    const raisedHands = students
+        .filter(s => s.handRaised)
+        .sort((a, b) => {
+            // If you want to use a timestamp, add it to StudentInfo and sort by it
+            // For now, sort by id as a placeholder
+            return a.id.localeCompare(b.id);
+        });
+
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
@@ -111,55 +128,209 @@ export default function ProfessorDashboardScreen() {
                 </View>
             </View>
 
-            <View style={styles.content}>
-                <Text style={styles.sectionLabel}>STUDENTS IN ROOM</Text>
-                
-                {students.length === 0 ? (
-                    <View style={styles.emptyState}>
-                        <Text style={styles.emptyEmoji}>👨‍🏫</Text>
-                        <Text style={styles.emptyText}>Waiting for students to join...</Text>
-                    </View>
-                ) : (
-                    <FlatList
-                        data={students}
-                        keyExtractor={(item) => item.id}
-                        renderItem={({ item }) => (
-                            <View style={[styles.studentCard, item.handRaised && styles.studentCardActive]}>
-                                {item.avatarType === "photo" && item.avatarUri ? (
-                                    <Image source={{ uri: item.avatarUri }} style={styles.studentPhoto} />
+            <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 40 }}>
+                <Text style={styles.sectionLabel}>SEAT MAP</Text>
+                <View style={styles.seatGridContainer}>
+                    {[...Array(12)].map((_, rowIdx) => (
+                        <View key={rowIdx} style={styles.seatRow}>
+                            {/* Section 1 */}
+                            {[...Array(4)].map((_, colIdx) => {
+                                const seatNum = rowIdx * 12 + colIdx + 1;
+                                const student = seatMap[seatNum.toString()];
+                                return (
+                                    <SeatBox key={seatNum} student={student} seatNum={seatNum} />
+                                );
+                            })}
+                            {/* Gap */}
+                            <View style={styles.seatGap} />
+                            {/* Section 2 */}
+                            {[...Array(4)].map((_, colIdx) => {
+                                const seatNum = rowIdx * 12 + colIdx + 5;
+                                const student = seatMap[seatNum.toString()];
+                                return (
+                                    <SeatBox key={seatNum} student={student} seatNum={seatNum} />
+                                );
+                            })}
+                            {/* Gap */}
+                            <View style={styles.seatGap} />
+                            {/* Section 3 */}
+                            {[...Array(4)].map((_, colIdx) => {
+                                const seatNum = rowIdx * 12 + colIdx + 9;
+                                const student = seatMap[seatNum.toString()];
+                                return (
+                                    <SeatBox key={seatNum} student={student} seatNum={seatNum} />
+                                );
+                            })}
+                        </View>
+                    ))}
+                </View>
+                <Text style={styles.sectionLabel}>RAISED HANDS</Text>
+                <View style={styles.raisedHandList}>
+                    {raisedHands.length === 0 ? (
+                        <Text style={styles.emptyText}>No hands raised</Text>
+                    ) : (
+                        raisedHands.map((student) => (
+                            <View key={student.id} style={styles.raisedHandItem}>
+                                {student.avatarType === "photo" && student.avatarUri ? (
+                                    <Image source={{ uri: student.avatarUri }} style={styles.raisedHandPhoto} />
                                 ) : (
-                                    <Text style={styles.studentEmoji}>{item.emoji}</Text>
+                                    <Text style={styles.raisedHandEmoji}>{student.emoji}</Text>
                                 )}
-                                <View style={{ flex: 1 }}>
-                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                                        <Text style={styles.studentName}>{item.name}</Text>
-                                        <View style={styles.seatBadge}>
-                                            <Text style={styles.seatText}>{item.seat}</Text>
-                                        </View>
-                                    </View>
-                                    <Text style={styles.studentDetail}>{item.major} {item.year}</Text>
-                                </View>
-                                
-                                {item.handRaised && (
-                                    <TouchableOpacity
-                                        activeOpacity={0.7}
-                                        onPress={() => clearHandRaise(item.id)}
-                                        style={styles.clearButton}
-                                    >
-                                        <Text style={styles.clearButtonText}>Clear ✋</Text>
-                                    </TouchableOpacity>
-                                )}
+                                <Text style={styles.raisedHandName}>{student.name}</Text>
+                                <Text style={styles.raisedHandSeat}>Seat {student.seat}</Text>
+                                <TouchableOpacity
+                                    activeOpacity={0.7}
+                                    onPress={() => clearHandRaise(student.id)}
+                                    style={styles.clearButton}
+                                >
+                                    <Text style={styles.clearButtonText}>Clear ✋</Text>
+                                </TouchableOpacity>
                             </View>
-                        )}
-                        contentContainerStyle={styles.listContent}
-                    />
-                )}
-            </View>
+                        ))
+                    )}
+                </View>
+            </ScrollView>
         </SafeAreaView>
     );
 }
 
+    // SeatBox component for seat grid
+    import { Pressable } from "react-native";
+
+    function SeatBox({ student, seatNum }: { student?: StudentInfo; seatNum: number }) {
+        const [showName, setShowName] = useState(false);
+        // Add mouse event handlers for web
+        const handleMouseEnter = () => setShowName(true);
+        const handleMouseLeave = () => setShowName(false);
+        return (
+            <Pressable
+                style={styles.seatBox}
+                onPressIn={() => setShowName(true)}
+                onPressOut={() => setShowName(false)}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+            >
+                {student ? (
+                    student.avatarType === "photo" && student.avatarUri ? (
+                        <Image source={{ uri: student.avatarUri }} style={styles.seatPhoto} />
+                    ) : (
+                        <Text style={styles.seatEmoji}>{student.emoji}</Text>
+                    )
+                ) : (
+                    <Text style={styles.seatNumber}>{seatNum}</Text>
+                )}
+                {/* Ping for raised hand */}
+                {student && student.handRaised && (
+                    <View style={styles.seatPing} />
+                )}
+                {student && showName && (
+                    <View style={styles.seatNamePopup}>
+                        <Text style={styles.seatNameText}>{student.name}</Text>
+                    </View>
+                )}
+            </Pressable>
+        );
+    }
 const styles = StyleSheet.create({
+                seatGap: {
+                    width: 48,
+                    height: 48,
+                },
+            seatNamePopup: {
+                position: 'absolute',
+                bottom: 52,
+                left: '50%',
+                transform: [{ translateX: -40 }],
+                backgroundColor: '#222',
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 6,
+                zIndex: 10,
+                minWidth: 80,
+                alignItems: 'center',
+            },
+            seatNameText: {
+                color: '#fff',
+                fontWeight: '700',
+                fontSize: 14,
+            },
+        seatGridContainer: {
+            marginVertical: 16,
+            alignItems: 'center',
+        },
+        seatRow: {
+            flexDirection: 'row',
+            marginBottom: 8,
+        },
+        seatBox: {
+            width: 48,
+            height: 48,
+            borderWidth: 2,
+            borderColor: '#eee',
+            borderRadius: 8,
+            marginHorizontal: 4,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: '#fafafa',
+            position: 'relative',
+        },
+        seatNumber: {
+            color: '#bbb',
+            fontWeight: '700',
+            fontSize: 16,
+        },
+        seatPhoto: {
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+        },
+        seatEmoji: {
+            fontSize: 24,
+        },
+        seatPing: {
+            position: 'absolute',
+            top: 4,
+            right: 4,
+            width: 12,
+            height: 12,
+            borderRadius: 6,
+            backgroundColor: '#ff5252',
+            borderWidth: 2,
+            borderColor: '#fff',
+            zIndex: 2,
+        },
+        raisedHandList: {
+            marginTop: 16,
+            paddingBottom: 24,
+        },
+        raisedHandItem: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 8,
+            backgroundColor: '#fff',
+            borderRadius: 12,
+            padding: 8,
+            marginBottom: 8,
+            borderWidth: 1,
+            borderColor: '#f0f0f0',
+        },
+        raisedHandPhoto: {
+            width: 28,
+            height: 28,
+            borderRadius: 14,
+        },
+        raisedHandEmoji: {
+            fontSize: 20,
+        },
+        raisedHandName: {
+            fontWeight: '700',
+            color: '#000',
+            fontSize: 15,
+        },
+        raisedHandSeat: {
+            color: '#666',
+            fontSize: 13,
+        },
     container: {
         flex: 1,
         backgroundColor: "#fff",
