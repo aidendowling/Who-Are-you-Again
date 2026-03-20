@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, TextInput } from "react-native";
 import { useRouter } from "expo-router";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { db } from "../config/firebase";
@@ -85,6 +85,8 @@ export default function QRScannerScreen() {
     const [permission, requestPermission] = useCameraPermissions();
     const [isScanning, setIsScanning] = useState(false);
     const [scannedData, setScannedData] = useState<string | null>(null);
+    const [seatInput, setSeatInput] = useState("");
+    const [showSeatInput, setShowSeatInput] = useState(false);
 
     const startScanning = async () => {
         if (!permission?.granted) {
@@ -106,16 +108,17 @@ export default function QRScannerScreen() {
         setScannedData(data);
         setIsScanning(false);
 
+        // Assign random seat 1-144 for generic codes
+        const randomSeat = Math.floor(Math.random() * 144) + 1;
         // Parse QR data — expected format: wh0ru://room/{roomId}/seat/{seatId}
         const match = data.match(/wh0ru:\/\/room\/(.+)\/seat\/(.+)/);
         if (match) {
             const roomId = match[1];
-            const seat = match[2];
-            
+            const seat = match[2]; // Use seat from QR code
+            console.log("Assigned seat from QR:", seat);
             try {
                 const userSnap = await getDoc(doc(db, "users", TEST_USER_ID));
                 const userType = userSnap.exists() ? userSnap.data().userType : "student";
-                
                 if (userType === "professor") {
                     router.push(`/professor?roomId=${roomId}` as any);
                 } else {
@@ -125,25 +128,34 @@ export default function QRScannerScreen() {
                 console.log("Error fetching user profile:", e);
                 router.push(`/classroom?roomId=${roomId}&seat=${seat}`);
             }
+        } else {
+            // If QR doesn't match, send to test room with random seat
+            const seat = randomSeat.toString();
+            console.log("Assigned random seat:", seat);
+            router.push(`/classroom?roomId=test-room&seat=${seat}` as any);
         }
     };
 
     const handleTestBypass = async () => {
-        const roomId = "test-room";
-        const seat = "A3";
-        
+        // Check user type
         try {
             const userSnap = await getDoc(doc(db, "users", TEST_USER_ID));
             const userType = userSnap.exists() ? userSnap.data().userType : "student";
-            
             if (userType === "professor") {
-                router.push(`/professor?roomId=${roomId}` as any);
+                router.push(`/professor?roomId=test-room` as any);
             } else {
-                router.push(`/classroom?roomId=${roomId}&seat=${seat}` as any);
+                setShowSeatInput(true);
             }
         } catch (e) {
-            router.push(`/classroom?roomId=${roomId}&seat=${seat}`);
+            setShowSeatInput(true);
         }
+    };
+
+    const handleSeatSubmit = () => {
+        const seat = seatInput.trim() || "A3";
+        router.push(`/classroom?roomId=test-room&seat=${seat}` as any);
+        setShowSeatInput(false);
+        setSeatInput("");
     };
 
     return (
@@ -187,9 +199,43 @@ export default function QRScannerScreen() {
                                 style={styles.bypassButton}
                             >
                                 <Text style={styles.bypassButtonText}>
-                                    Skip — Use Test Room
+                                    Enter Test Room
                                 </Text>
                             </TouchableOpacity>
+                            {showSeatInput && (
+                                <View style={{ gap: 8 }}>
+                                    <Text style={{ fontSize: 15, color: '#333', textAlign: 'center' }}>Enter Your Seat Number:</Text>
+                                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                                        <View style={{ flex: 1 }}>
+                                            <TextInput
+                                                value={seatInput}
+                                                onChangeText={setSeatInput}
+                                                placeholder="Seat Number"
+                                                style={{
+                                                    borderWidth: 1,
+                                                    borderColor: '#ccc',
+                                                    borderRadius: 8,
+                                                    padding: 10,
+                                                    fontSize: 16,
+                                                    backgroundColor: '#fff',
+                                                }}
+                                            />
+                                        </View>
+                                        <TouchableOpacity
+                                            activeOpacity={0.8}
+                                            onPress={handleSeatSubmit}
+                                            style={{
+                                                backgroundColor: '#000',
+                                                borderRadius: 8,
+                                                paddingVertical: 10,
+                                                paddingHorizontal: 16,
+                                            }}
+                                        >
+                                            <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>Submit</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            )}
                         </View>
                     )}
 
