@@ -1,8 +1,13 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getAuth, initializeAuth, type Persistence } from "firebase/auth";
+import { getAuth, initializeAuth } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
+
+// getReactNativePersistence is available at runtime in the React Native bundle
+// but is not in the default firebase/auth TypeScript types — require() bypasses this.
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const { getReactNativePersistence } = require("firebase/auth") as any;
 
 const firebaseConfig = {
     apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -16,30 +21,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-const reactNativeAsyncStoragePersistence: Persistence = {
-    type: "LOCAL",
-    async _isAvailable() {
-        try {
-            await AsyncStorage.setItem("__firebase_auth_test__", "1");
-            await AsyncStorage.removeItem("__firebase_auth_test__");
-            return true;
-        } catch {
-            return false;
-        }
-    },
-    async _set(key: string, value: string) {
-        await AsyncStorage.setItem(key, value);
-    },
-    async _get<T>(key: string) {
-        return (await AsyncStorage.getItem(key)) as T | null;
-    },
-    async _remove(key: string) {
-        await AsyncStorage.removeItem(key);
-    },
-    _addListener() {},
-    _removeListener() {},
-} as Persistence;
-
 const createAuth = () => {
     if (Platform.OS === "web") {
         return getAuth(app);
@@ -47,7 +28,7 @@ const createAuth = () => {
 
     try {
         return initializeAuth(app, {
-            persistence: reactNativeAsyncStoragePersistence,
+            persistence: getReactNativePersistence(AsyncStorage),
         });
     } catch {
         // Falls back when auth was already initialized (e.g. fast refresh).
