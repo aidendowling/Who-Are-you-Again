@@ -10,7 +10,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { db } from "../config/firebase";
-import { doc, getDoc, setDoc, collection, query, where, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, onSnapshot } from "firebase/firestore";
 import { ensureAnonymousUid } from "../utils/auth";
 import Animated, {
     useSharedValue,
@@ -20,6 +20,7 @@ import Animated, {
     withSequence,
     Easing,
 } from "react-native-reanimated";
+import ClassroomStatusCard from "./ClassroomStatus";
 
 interface StudentInfo {
     id: string;
@@ -41,6 +42,10 @@ export default function ClassroomScreen() {
     const [handRaised, setHandRaised] = useState(false);
     const [students, setStudents] = useState<StudentInfo[]>([]);
     const [uid, setUid] = useState<string | null>(null);
+    const totalSeats = 140; // later pull from Firebase data
+    const occupiedSeats = students.length;
+    const availableSeats = Math.max(totalSeats - occupiedSeats, 0);
+    const raisedHandsCount = students.filter((student) => student.handRaised).length;
 
     useEffect(() => {
         let isMounted = true;
@@ -184,6 +189,14 @@ export default function ClassroomScreen() {
                         </TouchableOpacity>
                     </View>
                 </View>
+
+                <ClassroomStatusCard
+                    total={totalSeats}
+                    occupied={occupiedSeats}
+                    available={availableSeats}
+                    handRaised={raisedHandsCount}
+                    userRole="student"
+                />
 
                 {/* Your Profile Card */}
                 {profile && (
