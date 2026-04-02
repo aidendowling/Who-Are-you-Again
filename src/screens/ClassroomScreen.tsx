@@ -10,7 +10,8 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { db } from "../config/firebase";
-import { doc, getDoc, setDoc, collection, query, where, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, onSnapshot } from "firebase/firestore";
+import { ensureAnonymousUid } from "../utils/auth";
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -20,8 +21,6 @@ import Animated, {
     Easing,
 } from "react-native-reanimated";
 import ClassroomStatusCard from "./ClassroomStatus";
-
-const TEST_USER_ID = "test-user-001";
 
 interface StudentInfo {
     id: string;
@@ -42,15 +41,37 @@ export default function ClassroomScreen() {
     const [profile, setProfile] = useState<any>(null);
     const [handRaised, setHandRaised] = useState(false);
     const [students, setStudents] = useState<StudentInfo[]>([]);
+    const [uid, setUid] = useState<string | null>(null);
     const totalSeats = 140; // later pull from Firebase data
     const occupiedSeats = students.length;
     const availableSeats = Math.max(totalSeats - occupiedSeats, 0);
     const raisedHandsCount = students.filter((student) => student.handRaised).length;
 
     useEffect(() => {
-        loadProfile();
-        checkInToRoom();
-    }, []);
+        let isMounted = true;
+
+        const initializeRoomIdentity = async () => {
+            try {
+                const resolvedUid = await ensureAnonymousUid();
+                if (!isMounted) return;
+
+                setUid(resolvedUid);
+                await loadProfile(resolvedUid);
+                await checkInToRoom(resolvedUid);
+            } catch (e) {
+                console.log("Could not initialize classroom user identity:", e);
+                if (isMounted) {
+                    setProfile({ name: "Student", emoji: "😊", major: "", year: "" });
+                }
+            }
+        };
+
+        initializeRoomIdentity();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [roomId, seat]);
 
     // Listen for other students in the room
     useEffect(() => {
@@ -84,26 +105,27 @@ export default function ClassroomScreen() {
         }
     }, [roomId]);
 
-    const loadProfile = async () => {
+    const loadProfile = async (userId: string) => {
         try {
-            const docSnap = await getDoc(doc(db, "users", TEST_USER_ID));
+            const docSnap = await getDoc(doc(db, "users", userId));
             if (docSnap.exists()) {
                 setProfile(docSnap.data());
             } else {
                 setProfile({ name: "Student", emoji: "😊", major: "", year: "" });
             }
         } catch (e) {
+            console.log("Could not load classroom profile:", e);
             setProfile({ name: "Student", emoji: "😊", major: "", year: "" });
         }
     };
 
-    const checkInToRoom = async () => {
+    const checkInToRoom = async (userId: string) => {
         if (!roomId || !seat) return;
         try {
-            const profileSnap = await getDoc(doc(db, "users", TEST_USER_ID));
+            const profileSnap = await getDoc(doc(db, "users", userId));
             const profileData = profileSnap.exists() ? profileSnap.data() : {};
 
-            await setDoc(doc(db, "rooms", roomId, "checkins", TEST_USER_ID), {
+            await setDoc(doc(db, "rooms", roomId, "checkins", userId), {
                 name: profileData.name || "Student",
                 emoji: profileData.emoji || "😊",
                 avatarType: profileData.avatarType || "emoji",
@@ -123,12 +145,16 @@ export default function ClassroomScreen() {
 
     const toggleHandRaise = async () => {
         const newState = !handRaised;
+        if (!roomId || !uid) {
+            console.log("Cannot update hand raise: room or user identity is not ready.");
+            return;
+        }
+
         setHandRaised(newState);
 
-        if (!roomId) return;
         try {
             await setDoc(
-                doc(db, "rooms", roomId, "checkins", TEST_USER_ID),
+                doc(db, "rooms", roomId, "checkins", uid),
                 { handRaised: newState },
                 { merge: true }
             );

@@ -15,14 +15,12 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { db } from "../config/firebase";
 import { doc, setDoc, getDoc } from "firebase/firestore";
+import { ensureAnonymousUid } from "../utils/auth";
 import * as ImagePicker from "expo-image-picker";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 
 const EMOJI_OPTIONS = ["😊", "🤓", "😎", "🧑‍💻", "🎨", "🎵", "⚡", "🌟", "🦊", "🐱", "🌈", "🔥", "💡", "📚", "🎮", "🏀"];
 const YEAR_OPTIONS = ["Freshman", "Sophomore", "Junior", "Senior", "Grad Student"];
-
-// Use a fixed test userId for now (would come from auth in production)
-const TEST_USER_ID = "test-user-001";
 
 type AvatarType = "emoji" | "photo";
 
@@ -39,6 +37,7 @@ export default function ProfileScreen() {
     const [userType, setUserType] = useState<"student" | "professor">("student");
     const [isSaving, setIsSaving] = useState(false);
     const [isLoaded, setIsLoaded] = useState(false);
+    const [uid, setUid] = useState<string | null>(null);
 
     // Load existing profile
     useEffect(() => {
@@ -47,10 +46,13 @@ export default function ProfileScreen() {
 
     const loadProfile = async () => {
         try {
+            const resolvedUid = await ensureAnonymousUid();
+            setUid(resolvedUid);
+
             const timeout = new Promise((_, reject) =>
                 setTimeout(() => reject(new Error("timeout")), 3000)
             );
-            const docRef = doc(db, "users", TEST_USER_ID);
+            const docRef = doc(db, "users", resolvedUid);
             const docSnap = await Promise.race([getDoc(docRef), timeout]) as any;
             if (docSnap?.exists?.()) {
                 const data = docSnap.data();
@@ -65,7 +67,7 @@ export default function ProfileScreen() {
                 setUserType(data.userType || "student");
             }
         } catch (e) {
-            console.log("Could not load profile:", e);
+            console.log("Could not initialize auth or load profile:", e);
         }
         setIsLoaded(true);
     };
@@ -111,10 +113,15 @@ export default function ProfileScreen() {
 
     const saveAndContinue = async () => {
         if (!name.trim()) return;
+        if (!uid) {
+            console.log("Cannot save profile: user identity is not ready yet.");
+            return;
+        }
+
         setIsSaving(true);
 
         try {
-            await setDoc(doc(db, "users", TEST_USER_ID), {
+            await setDoc(doc(db, "users", uid), {
                 name: name.trim(),
                 major: major.trim(),
                 year,
@@ -127,7 +134,7 @@ export default function ProfileScreen() {
                 updatedAt: new Date().toISOString(),
             });
         } catch (e) {
-            console.log("Could not save profile (Firebase may not be configured):", e);
+            console.log("Could not save profile:", e);
         }
 
         setIsSaving(false);
@@ -382,10 +389,10 @@ export default function ProfileScreen() {
                 <TouchableOpacity
                     activeOpacity={0.8}
                     onPress={saveAndContinue}
-                    disabled={!name.trim() || isSaving}
+                    disabled={!name.trim() || isSaving || !uid}
                     style={[
                         styles.submitButton,
-                        !name.trim() && styles.submitDisabled,
+                        (!name.trim() || !uid) && styles.submitDisabled,
                     ]}
                 >
                     <Text style={styles.submitText}>
