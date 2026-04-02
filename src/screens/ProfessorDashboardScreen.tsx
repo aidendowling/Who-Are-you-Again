@@ -385,7 +385,11 @@ export default function ProfessorDashboardScreen() {
                 <Text style={styles.title}>Dashboard</Text>
 
                 {/* Seating Map */}
-                <TouchableOpacity style={styles.actionCard} activeOpacity={0.7}>
+                <TouchableOpacity
+                    style={styles.actionCard}
+                    activeOpacity={0.7}
+                    onPress={() => router.push(`/seating-map?roomId=${roomId}` as any)}
+                >
                     <View style={[styles.actionIconWrap, styles.mapIconWrap]}>
                         <Text style={styles.actionIconEmoji}>🗺️</Text>
                     </View>
