@@ -21,16 +21,24 @@ import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 
 const EMOJI_OPTIONS = ["😊", "🤓", "😎", "🧑‍💻", "🎨", "🎵", "⚡", "🌟", "🦊", "🐱", "🌈", "🔥", "💡", "📚", "🎮", "🏀"];
 const YEAR_OPTIONS = ["Freshman", "Sophomore", "Junior", "Senior", "Grad Student"];
+const TITLE_OPTIONS = ["Professor", "Assoc. Professor", "Asst. Professor", "Lecturer", "Teaching Assistant"];
 
 type AvatarType = "emoji" | "photo";
 
 export default function ProfileScreen() {
     const router = useRouter();
     const [name, setName] = useState("");
+    // Student fields
     const [major, setMajor] = useState("");
     const [year, setYear] = useState("");
     const [interests, setInterests] = useState("");
     const [funFact, setFunFact] = useState("");
+    // Professor fields
+    const [department, setDepartment] = useState("");
+    const [title, setTitle] = useState("");
+    const [officeHours, setOfficeHours] = useState("");
+    const [researchInterests, setResearchInterests] = useState("");
+    const [bio, setBio] = useState("");
     const [emoji, setEmoji] = useState("😊");
     const [avatarType, setAvatarType] = useState<AvatarType>("emoji");
     const [avatarUri, setAvatarUri] = useState<string | null>(null);
@@ -61,6 +69,11 @@ export default function ProfileScreen() {
                 setYear(data.year || "");
                 setInterests(data.interests || "");
                 setFunFact(data.funFact || "");
+                setDepartment(data.department || "");
+                setTitle(data.title || "");
+                setOfficeHours(data.officeHours || "");
+                setResearchInterests(data.researchInterests || "");
+                setBio(data.bio || "");
                 setEmoji(data.emoji || "😊");
                 setAvatarType(data.avatarType || "emoji");
                 setAvatarUri(data.avatarUri || null);
@@ -121,18 +134,29 @@ export default function ProfileScreen() {
         setIsSaving(true);
 
         try {
-            await setDoc(doc(db, "users", uid), {
+            const profileData: Record<string, any> = {
                 name: name.trim(),
-                major: major.trim(),
-                year,
-                interests: interests.trim(),
-                funFact: funFact.trim(),
                 emoji,
                 avatarType,
                 avatarUri: avatarType === "photo" ? avatarUri : null,
                 userType,
                 updatedAt: new Date().toISOString(),
-            });
+            };
+
+            if (userType === "professor") {
+                profileData.department = department.trim();
+                profileData.title = title;
+                profileData.officeHours = officeHours.trim();
+                profileData.researchInterests = researchInterests.trim();
+                profileData.bio = bio.trim();
+            } else {
+                profileData.major = major.trim();
+                profileData.year = year;
+                profileData.interests = interests.trim();
+                profileData.funFact = funFact.trim();
+            }
+
+            await setDoc(doc(db, "users", uid), profileData);
         } catch (e) {
             console.log("Could not save profile:", e);
         }
@@ -164,7 +188,9 @@ export default function ProfileScreen() {
                     <View style={styles.header}>
                         <Text style={styles.title}>who are you?</Text>
                         <Text style={styles.subtitle}>
-                            tell us about yourself so your classmates can get to know you
+                            {userType === "professor"
+                                ? "your profile is shown to students when they check into your class"
+                                : "tell us about yourself so your classmates can get to know you"}
                         </Text>
                     </View>
 
@@ -291,71 +317,142 @@ export default function ProfileScreen() {
                         />
                     </View>
 
-                    {/* Major */}
-                    <View style={styles.section}>
-                        <Text style={styles.label}>major / field</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={major}
-                            onChangeText={setMajor}
-                            placeholder="e.g. Computer Science"
-                            placeholderTextColor="#999"
-                        />
-                    </View>
+                    {userType === "student" ? (
+                        <>
+                            {/* Major */}
+                            <View style={styles.section}>
+                                <Text style={styles.label}>major / field</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={major}
+                                    onChangeText={setMajor}
+                                    placeholder="e.g. Computer Science"
+                                    placeholderTextColor="#999"
+                                />
+                            </View>
 
-                    {/* Year */}
-                    <View style={styles.section}>
-                        <Text style={styles.label}>year</Text>
-                        <View style={styles.yearGrid}>
-                            {YEAR_OPTIONS.map((y) => (
-                                <TouchableOpacity
-                                    activeOpacity={0.7}
-                                    key={y}
-                                    onPress={() => setYear(y)}
-                                    style={[
-                                        styles.yearOption,
-                                        year === y && styles.yearSelected,
-                                    ]}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.yearText,
-                                            year === y && styles.yearTextSelected,
-                                        ]}
-                                    >
-                                        {y}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </View>
+                            {/* Year */}
+                            <View style={styles.section}>
+                                <Text style={styles.label}>year</Text>
+                                <View style={styles.yearGrid}>
+                                    {YEAR_OPTIONS.map((y) => (
+                                        <TouchableOpacity
+                                            activeOpacity={0.7}
+                                            key={y}
+                                            onPress={() => setYear(y)}
+                                            style={[
+                                                styles.yearOption,
+                                                year === y && styles.yearSelected,
+                                            ]}
+                                        >
+                                            <Text style={[styles.yearText, year === y && styles.yearTextSelected]}>
+                                                {y}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
 
-                    {/* Interests */}
-                    <View style={styles.section}>
-                        <Text style={styles.label}>interests</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={interests}
-                            onChangeText={setInterests}
-                            placeholder="e.g. AI, music, hiking, cooking"
-                            placeholderTextColor="#999"
-                        />
-                    </View>
+                            {/* Interests */}
+                            <View style={styles.section}>
+                                <Text style={styles.label}>interests</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={interests}
+                                    onChangeText={setInterests}
+                                    placeholder="e.g. AI, music, hiking, cooking"
+                                    placeholderTextColor="#999"
+                                />
+                            </View>
 
-                    {/* Fun Fact */}
-                    <View style={styles.section}>
-                        <Text style={styles.label}>fun fact</Text>
-                        <TextInput
-                            style={[styles.input, styles.multilineInput]}
-                            value={funFact}
-                            onChangeText={setFunFact}
-                            placeholder="something interesting about you!"
-                            placeholderTextColor="#999"
-                            multiline
-                            numberOfLines={3}
-                            textAlignVertical="top"
-                        />
-                    </View>
+                            {/* Fun Fact */}
+                            <View style={styles.section}>
+                                <Text style={styles.label}>fun fact</Text>
+                                <TextInput
+                                    style={[styles.input, styles.multilineInput]}
+                                    value={funFact}
+                                    onChangeText={setFunFact}
+                                    placeholder="something interesting about you!"
+                                    placeholderTextColor="#999"
+                                    multiline
+                                    numberOfLines={3}
+                                    textAlignVertical="top"
+                                />
+                            </View>
+                        </>
+                    ) : (
+                        <>
+                            {/* Title */}
+                            <View style={styles.section}>
+                                <Text style={styles.label}>title</Text>
+                                <View style={styles.yearGrid}>
+                                    {TITLE_OPTIONS.map((t) => (
+                                        <TouchableOpacity
+                                            activeOpacity={0.7}
+                                            key={t}
+                                            onPress={() => setTitle(title === t ? "" : t)}
+                                            style={[styles.yearOption, title === t && styles.yearSelected]}
+                                        >
+                                            <Text style={[styles.yearText, title === t && styles.yearTextSelected]}>
+                                                {t}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
+
+                            {/* Department */}
+                            <View style={styles.section}>
+                                <Text style={styles.label}>department</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={department}
+                                    onChangeText={setDepartment}
+                                    placeholder="e.g. Computer Science"
+                                    placeholderTextColor="#999"
+                                />
+                            </View>
+
+                            {/* Office Hours */}
+                            <View style={styles.section}>
+                                <Text style={styles.label}>office hours</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={officeHours}
+                                    onChangeText={setOfficeHours}
+                                    placeholder="e.g. Mon & Wed 2–4 pm, Room 305"
+                                    placeholderTextColor="#999"
+                                />
+                            </View>
+
+                            {/* Research / Teaching Interests */}
+                            <View style={styles.section}>
+                                <Text style={styles.label}>research / teaching interests</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={researchInterests}
+                                    onChangeText={setResearchInterests}
+                                    placeholder="e.g. HCI, distributed systems, machine learning"
+                                    placeholderTextColor="#999"
+                                />
+                            </View>
+
+                            {/* Bio */}
+                            <View style={styles.section}>
+                                <Text style={styles.label}>about</Text>
+                                <TextInput
+                                    style={[styles.input, styles.multilineInput]}
+                                    value={bio}
+                                    onChangeText={setBio}
+                                    placeholder="a short bio students will see on your profile"
+                                    placeholderTextColor="#999"
+                                    multiline
+                                    numberOfLines={3}
+                                    textAlignVertical="top"
+                                />
+                            </View>
+                        </>
+                    )}
 
                     {/* Preview Card */}
                     {name.trim() !== "" && (
@@ -369,12 +466,27 @@ export default function ProfileScreen() {
                                 )}
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.previewName}>{name}</Text>
-                                    {major ? (
-                                        <Text style={styles.previewDetail}>{major}{year ? ` • ${year}` : ""}</Text>
-                                    ) : null}
-                                    {interests ? (
-                                        <Text style={styles.previewInterests}>{interests}</Text>
-                                    ) : null}
+                                    {userType === "student" ? (
+                                        <>
+                                            {major ? (
+                                                <Text style={styles.previewDetail}>{major}{year ? ` • ${year}` : ""}</Text>
+                                            ) : null}
+                                            {interests ? (
+                                                <Text style={styles.previewInterests}>{interests}</Text>
+                                            ) : null}
+                                        </>
+                                    ) : (
+                                        <>
+                                            {(title || department) ? (
+                                                <Text style={styles.previewDetail}>
+                                                    {[title, department].filter(Boolean).join(" • ")}
+                                                </Text>
+                                            ) : null}
+                                            {researchInterests ? (
+                                                <Text style={styles.previewInterests}>{researchInterests}</Text>
+                                            ) : null}
+                                        </>
+                                    )}
                                 </View>
                             </View>
                         </View>
@@ -396,7 +508,7 @@ export default function ProfileScreen() {
                     ]}
                 >
                     <Text style={styles.submitText}>
-                        {isSaving ? "Saving..." : "Enter Class →"}
+                        {isSaving ? "Saving..." : userType === "professor" ? "Set Up Class →" : "Enter Class →"}
                     </Text>
                 </TouchableOpacity>
             </View>
