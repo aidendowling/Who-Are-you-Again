@@ -12,7 +12,7 @@ import {
     Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { db } from "../config/firebase";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { ensureAnonymousUid } from "../utils/auth";
@@ -23,10 +23,15 @@ const EMOJI_OPTIONS = ["😊", "🤓", "😎", "🧑‍💻", "🎨", "🎵", "�
 const YEAR_OPTIONS = ["Freshman", "Sophomore", "Junior", "Senior", "Grad Student"];
 const TITLE_OPTIONS = ["Professor", "Assoc. Professor", "Asst. Professor", "Lecturer", "Teaching Assistant"];
 
+const NAVY = "#1e3a5f";
+const serif = Platform.select({ ios: "Georgia", android: "serif", default: "serif" });
+const mono  = Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" });
+
 type AvatarType = "emoji" | "photo";
 
 export default function ProfileScreen() {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const [name, setName] = useState("");
     // Student fields
     const [major, setMajor] = useState("");
@@ -174,7 +179,7 @@ export default function ProfileScreen() {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 style={{ flex: 1 }}
@@ -194,69 +199,61 @@ export default function ProfileScreen() {
                         </Text>
                     </View>
 
-                    {/* Avatar Preview */}
-                    <View style={styles.avatarPreviewContainer}>
-                        <View style={styles.avatarCircle}>
-                            {avatarType === "photo" && avatarUri ? (
-                                <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
-                            ) : (
-                                <Text style={styles.avatarEmoji}>{emoji}</Text>
-                            )}
+                    {/* Avatar Card */}
+                    <View style={styles.card}>
+                        <View style={styles.avatarPreviewContainer}>
+                            <View style={styles.avatarCircle}>
+                                {avatarType === "photo" && avatarUri ? (
+                                    <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+                                ) : (
+                                    <Text style={styles.avatarEmoji}>{emoji}</Text>
+                                )}
+                            </View>
                         </View>
-                    </View>
 
-                    {/* Avatar Type Tabs */}
-                    <View style={styles.tabContainer}>
-                        <TouchableOpacity
-                            activeOpacity={0.7}
-                            onPress={() => setAvatarType("emoji")}
-                            style={[styles.tab, avatarType === "emoji" && styles.tabActive]}
-                        >
-                            <Text style={[styles.tabText, avatarType === "emoji" && styles.tabTextActive]}>
-                                preset icons
-                            </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            activeOpacity={0.7}
-                            onPress={() => {
-                                if (avatarUri) {
-                                    setAvatarType("photo");
-                                } else {
-                                    pickImage();
-                                }
-                            }}
-                            style={[styles.tab, avatarType === "photo" && styles.tabActive]}
-                        >
-                            <Text style={[styles.tabText, avatarType === "photo" && styles.tabTextActive]}>
-                                upload photo
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
+                        <View style={styles.tabContainer}>
+                            <TouchableOpacity
+                                activeOpacity={0.7}
+                                onPress={() => setAvatarType("emoji")}
+                                style={[styles.tab, avatarType === "emoji" && styles.tabActive]}
+                            >
+                                <Text style={[styles.tabText, avatarType === "emoji" && styles.tabTextActive]}>
+                                    preset icons
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                activeOpacity={0.7}
+                                onPress={() => {
+                                    if (avatarUri) {
+                                        setAvatarType("photo");
+                                    } else {
+                                        pickImage();
+                                    }
+                                }}
+                                style={[styles.tab, avatarType === "photo" && styles.tabActive]}
+                            >
+                                <Text style={[styles.tabText, avatarType === "photo" && styles.tabTextActive]}>
+                                    upload photo
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
 
-                    {/* Emoji Grid (shown when emoji tab is active) */}
-                    {avatarType === "emoji" && (
-                        <View style={styles.section}>
+                        {avatarType === "emoji" && (
                             <View style={styles.emojiGrid}>
                                 {EMOJI_OPTIONS.map((e) => (
                                     <TouchableOpacity
                                         activeOpacity={0.7}
                                         key={e}
                                         onPress={() => setEmoji(e)}
-                                        style={[
-                                            styles.emojiOption,
-                                            emoji === e && styles.emojiSelected,
-                                        ]}
+                                        style={[styles.emojiOption, emoji === e && styles.emojiSelected]}
                                     >
                                         <Text style={styles.emojiText}>{e}</Text>
                                     </TouchableOpacity>
                                 ))}
                             </View>
-                        </View>
-                    )}
+                        )}
 
-                    {/* Photo Upload (shown when photo tab is active) */}
-                    {avatarType === "photo" && (
-                        <View style={styles.section}>
+                        {avatarType === "photo" && (
                             <View style={styles.photoActions}>
                                 <TouchableOpacity
                                     activeOpacity={0.7}
@@ -277,11 +274,11 @@ export default function ProfileScreen() {
                                     </TouchableOpacity>
                                 )}
                             </View>
-                        </View>
-                    )}
+                        )}
+                    </View>
                     
-                    {/* Role Selection */}
-                    <View style={styles.section}>
+                    {/* Role Selection Card */}
+                    <View style={styles.card}>
                         <Text style={styles.label}>your role</Text>
                         <View style={styles.tabContainer}>
                             <TouchableOpacity
@@ -305,6 +302,8 @@ export default function ProfileScreen() {
                         </View>
                     </View>
 
+                    {/* Fields Card */}
+                    <View style={styles.card}>
                     {/* Name */}
                     <View style={styles.section}>
                         <Text style={styles.label}>name *</Text>
@@ -313,7 +312,7 @@ export default function ProfileScreen() {
                             value={name}
                             onChangeText={setName}
                             placeholder="what should people call you?"
-                            placeholderTextColor="#999"
+                            placeholderTextColor="#bbb"
                         />
                     </View>
 
@@ -327,7 +326,7 @@ export default function ProfileScreen() {
                                     value={major}
                                     onChangeText={setMajor}
                                     placeholder="e.g. Computer Science"
-                                    placeholderTextColor="#999"
+                                    placeholderTextColor="#bbb"
                                 />
                             </View>
 
@@ -361,7 +360,7 @@ export default function ProfileScreen() {
                                     value={interests}
                                     onChangeText={setInterests}
                                     placeholder="e.g. AI, music, hiking, cooking"
-                                    placeholderTextColor="#999"
+                                    placeholderTextColor="#bbb"
                                 />
                             </View>
 
@@ -373,7 +372,7 @@ export default function ProfileScreen() {
                                     value={funFact}
                                     onChangeText={setFunFact}
                                     placeholder="something interesting about you!"
-                                    placeholderTextColor="#999"
+                                    placeholderTextColor="#bbb"
                                     multiline
                                     numberOfLines={3}
                                     textAlignVertical="top"
@@ -409,7 +408,7 @@ export default function ProfileScreen() {
                                     value={department}
                                     onChangeText={setDepartment}
                                     placeholder="e.g. Computer Science"
-                                    placeholderTextColor="#999"
+                                    placeholderTextColor="#bbb"
                                 />
                             </View>
 
@@ -421,7 +420,7 @@ export default function ProfileScreen() {
                                     value={officeHours}
                                     onChangeText={setOfficeHours}
                                     placeholder="e.g. Mon & Wed 2–4 pm, Room 305"
-                                    placeholderTextColor="#999"
+                                    placeholderTextColor="#bbb"
                                 />
                             </View>
 
@@ -433,7 +432,7 @@ export default function ProfileScreen() {
                                     value={researchInterests}
                                     onChangeText={setResearchInterests}
                                     placeholder="e.g. HCI, distributed systems, machine learning"
-                                    placeholderTextColor="#999"
+                                    placeholderTextColor="#bbb"
                                 />
                             </View>
 
@@ -445,7 +444,7 @@ export default function ProfileScreen() {
                                     value={bio}
                                     onChangeText={setBio}
                                     placeholder="a short bio students will see on your profile"
-                                    placeholderTextColor="#999"
+                                    placeholderTextColor="#bbb"
                                     multiline
                                     numberOfLines={3}
                                     textAlignVertical="top"
@@ -453,6 +452,7 @@ export default function ProfileScreen() {
                             </View>
                         </>
                     )}
+                    </View>{/* end fields card */}
 
                     {/* Preview Card */}
                     {name.trim() !== "" && (
@@ -497,7 +497,7 @@ export default function ProfileScreen() {
             </KeyboardAvoidingView>
 
             {/* Fixed Footer Button */}
-            <View style={styles.footer}>
+            <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + 8, 28) }]}>
                 <TouchableOpacity
                     activeOpacity={0.8}
                     onPress={saveAndContinue}
@@ -519,67 +519,92 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#fff",
+        backgroundColor: "#f7f8fa",
     },
     footer: {
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        backgroundColor: "#fff",
+        paddingHorizontal: 20,
+        paddingTop: 12,
+        paddingBottom: 28,
+        backgroundColor: "#f7f8fa",
         borderTopWidth: 1,
-        borderTopColor: "#f0f0f0",
+        borderTopColor: "#e4e7ed",
     },
     scrollContent: {
-        padding: 24,
+        padding: 20,
         paddingBottom: 40,
     },
     loadingText: {
         textAlign: "center",
         marginTop: 100,
         fontSize: 16,
+        fontFamily: mono,
         color: "#999",
     },
+
+    // Header
     header: {
-        marginBottom: 24,
+        marginBottom: 20,
         marginTop: 8,
     },
     title: {
-        fontSize: 32,
-        fontWeight: "900",
-        color: "#000",
-        marginBottom: 8,
+        fontSize: 30,
+        fontWeight: "700",
+        fontFamily: serif,
+        color: "#111",
+        marginBottom: 6,
     },
     subtitle: {
-        fontSize: 15,
-        color: "#666",
-        lineHeight: 22,
+        fontSize: 14,
+        fontFamily: mono,
+        color: "#888",
+        lineHeight: 20,
     },
+
+    // Cards
+    card: {
+        backgroundColor: "#fff",
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: "#e4e7ed",
+        padding: 18,
+        marginBottom: 16,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+
+    // Avatar
     avatarPreviewContainer: {
         alignItems: "center",
-        marginBottom: 20,
+        marginBottom: 18,
     },
     avatarCircle: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        backgroundColor: "#f5f5f5",
+        width: 96,
+        height: 96,
+        borderRadius: 48,
+        backgroundColor: "#f0f2f5",
         justifyContent: "center",
         alignItems: "center",
-        borderWidth: 3,
-        borderColor: "#000",
+        borderWidth: 2,
+        borderColor: NAVY,
         overflow: "hidden",
     },
     avatarImage: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
+        width: 96,
+        height: 96,
+        borderRadius: 48,
     },
     avatarEmoji: {
-        fontSize: 48,
+        fontSize: 46,
     },
+
+    // Tabs (avatar type + role)
     tabContainer: {
         flexDirection: "row",
         marginBottom: 16,
-        backgroundColor: "#f5f5f5",
+        backgroundColor: "#f0f2f5",
         borderRadius: 12,
         padding: 4,
     },
@@ -590,40 +615,47 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     tabActive: {
-        backgroundColor: "#000",
+        backgroundColor: NAVY,
     },
     tabText: {
         fontSize: 14,
+        fontFamily: mono,
         fontWeight: "600",
-        color: "#666",
+        color: "#888",
     },
     tabTextActive: {
         color: "#fff",
     },
+
+    // Form sections
     section: {
-        marginBottom: 24,
+        marginBottom: 16,
     },
     label: {
-        fontSize: 13,
+        fontSize: 11,
+        fontFamily: mono,
         fontWeight: "600",
         color: "#999",
-        textTransform: "lowercase",
+        textTransform: "uppercase",
+        letterSpacing: 0.8,
         marginBottom: 8,
-        letterSpacing: 0.5,
     },
     input: {
-        backgroundColor: "#f5f5f5",
+        backgroundColor: "#fff",
         borderRadius: 12,
-        padding: 16,
-        fontSize: 16,
-        color: "#000",
+        padding: 14,
+        fontSize: 15,
+        fontFamily: serif,
+        color: "#111",
         borderWidth: 1,
-        borderColor: "#eee",
+        borderColor: "#e4e7ed",
     },
     multilineInput: {
-        minHeight: 80,
-        paddingTop: 16,
+        minHeight: 88,
+        paddingTop: 14,
     },
+
+    // Emoji grid
     emojiGrid: {
         flexDirection: "row",
         flexWrap: "wrap",
@@ -633,46 +665,51 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 12,
-        backgroundColor: "#f5f5f5",
+        backgroundColor: "#f0f2f5",
         justifyContent: "center",
         alignItems: "center",
         borderWidth: 2,
         borderColor: "transparent",
     },
     emojiSelected: {
-        borderColor: "#000",
-        backgroundColor: "#f0f0ff",
+        borderColor: NAVY,
+        backgroundColor: "#eef1f7",
     },
     emojiText: {
         fontSize: 24,
     },
+
+    // Photo upload
     photoActions: {
         gap: 10,
     },
     photoButton: {
-        backgroundColor: "#f5f5f5",
+        backgroundColor: "#f7f8fa",
         paddingVertical: 16,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: "#eee",
+        borderColor: "#e4e7ed",
         borderStyle: "dashed",
     },
     photoButtonText: {
         textAlign: "center",
-        fontSize: 15,
-        color: "#333",
+        fontSize: 14,
+        fontFamily: mono,
+        color: "#555",
         fontWeight: "500",
     },
     removeButton: {
-        paddingVertical: 10,
-        borderRadius: 10,
+        paddingVertical: 8,
     },
     removeButtonText: {
         textAlign: "center",
-        fontSize: 14,
+        fontSize: 13,
+        fontFamily: mono,
         color: "#e53e3e",
         fontWeight: "500",
     },
+
+    // Year / Title pill grids
     yearGrid: {
         flexDirection: "row",
         flexWrap: "wrap",
@@ -682,84 +719,99 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 10,
         borderRadius: 20,
-        backgroundColor: "#f5f5f5",
+        backgroundColor: "#f0f2f5",
         borderWidth: 1,
-        borderColor: "#eee",
+        borderColor: "#e4e7ed",
     },
     yearSelected: {
-        backgroundColor: "#000",
-        borderColor: "#000",
+        backgroundColor: NAVY,
+        borderColor: NAVY,
     },
     yearText: {
-        fontSize: 14,
-        color: "#333",
+        fontSize: 13,
+        fontFamily: mono,
+        color: "#555",
         fontWeight: "500",
     },
     yearTextSelected: {
         color: "#fff",
     },
+
+    // Preview card
     previewCard: {
-        backgroundColor: "#fafafa",
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 24,
+        backgroundColor: "#fff",
+        borderRadius: 20,
+        padding: 18,
+        marginBottom: 16,
         borderWidth: 1,
-        borderColor: "#eee",
+        borderColor: "#e4e7ed",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
     },
     previewLabel: {
         fontSize: 11,
+        fontFamily: mono,
         fontWeight: "600",
-        color: "#bbb",
+        color: "#aaa",
         textTransform: "uppercase",
+        letterSpacing: 0.8,
         marginBottom: 12,
-        letterSpacing: 1,
     },
     previewContent: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 12,
+        gap: 14,
     },
     previewImage: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 52,
+        height: 52,
+        borderRadius: 26,
     },
     previewEmoji: {
-        fontSize: 40,
+        fontSize: 42,
     },
     previewName: {
         fontSize: 18,
         fontWeight: "700",
-        color: "#000",
+        fontFamily: serif,
+        color: "#111",
     },
     previewDetail: {
-        fontSize: 14,
+        fontSize: 13,
+        fontFamily: mono,
         color: "#666",
-        marginTop: 2,
+        marginTop: 3,
     },
     previewInterests: {
-        fontSize: 13,
+        fontSize: 12,
+        fontFamily: mono,
         color: "#999",
-        marginTop: 4,
+        marginTop: 3,
     },
+
+    // Submit button
     submitButton: {
-        backgroundColor: "#000",
+        backgroundColor: NAVY,
         paddingVertical: 18,
         borderRadius: 16,
-        shadowColor: "#000",
+        shadowColor: NAVY,
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
+        shadowOpacity: 0.25,
         shadowRadius: 12,
         elevation: 4,
     },
     submitDisabled: {
-        backgroundColor: "#ccc",
+        backgroundColor: "#c8cdd6",
         shadowOpacity: 0,
     },
     submitText: {
         color: "#fff",
-        fontSize: 18,
-        fontWeight: "600",
+        fontSize: 17,
+        fontFamily: mono,
+        fontWeight: "700",
         textAlign: "center",
     },
 });
