@@ -12,7 +12,7 @@ import {
     Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { db } from "../config/firebase";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { ensureAnonymousUid } from "../utils/auth";
@@ -21,16 +21,29 @@ import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 
 const EMOJI_OPTIONS = ["😊", "🤓", "😎", "🧑‍💻", "🎨", "🎵", "⚡", "🌟", "🦊", "🐱", "🌈", "🔥", "💡", "📚", "🎮", "🏀"];
 const YEAR_OPTIONS = ["Freshman", "Sophomore", "Junior", "Senior", "Grad Student"];
+const TITLE_OPTIONS = ["Professor", "Assoc. Professor", "Asst. Professor", "Lecturer", "Teaching Assistant"];
+
+const NAVY = "#1e3a5f";
+const serif = Platform.select({ ios: "Georgia", android: "serif", default: "serif" });
+const mono  = Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" });
 
 type AvatarType = "emoji" | "photo";
 
 export default function ProfileScreen() {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const [name, setName] = useState("");
+    // Student fields
     const [major, setMajor] = useState("");
     const [year, setYear] = useState("");
     const [interests, setInterests] = useState("");
     const [funFact, setFunFact] = useState("");
+    // Professor fields
+    const [department, setDepartment] = useState("");
+    const [title, setTitle] = useState("");
+    const [officeHours, setOfficeHours] = useState("");
+    const [researchInterests, setResearchInterests] = useState("");
+    const [bio, setBio] = useState("");
     const [emoji, setEmoji] = useState("😊");
     const [avatarType, setAvatarType] = useState<AvatarType>("emoji");
     const [avatarUri, setAvatarUri] = useState<string | null>(null);
@@ -61,6 +74,11 @@ export default function ProfileScreen() {
                 setYear(data.year || "");
                 setInterests(data.interests || "");
                 setFunFact(data.funFact || "");
+                setDepartment(data.department || "");
+                setTitle(data.title || "");
+                setOfficeHours(data.officeHours || "");
+                setResearchInterests(data.researchInterests || "");
+                setBio(data.bio || "");
                 setEmoji(data.emoji || "😊");
                 setAvatarType(data.avatarType || "emoji");
                 setAvatarUri(data.avatarUri || null);
@@ -121,18 +139,29 @@ export default function ProfileScreen() {
         setIsSaving(true);
 
         try {
-            await setDoc(doc(db, "users", uid), {
+            const profileData: Record<string, any> = {
                 name: name.trim(),
-                major: major.trim(),
-                year,
-                interests: interests.trim(),
-                funFact: funFact.trim(),
                 emoji,
                 avatarType,
                 avatarUri: avatarType === "photo" ? avatarUri : null,
                 userType,
                 updatedAt: new Date().toISOString(),
-            });
+            };
+
+            if (userType === "professor") {
+                profileData.department = department.trim();
+                profileData.title = title;
+                profileData.officeHours = officeHours.trim();
+                profileData.researchInterests = researchInterests.trim();
+                profileData.bio = bio.trim();
+            } else {
+                profileData.major = major.trim();
+                profileData.year = year;
+                profileData.interests = interests.trim();
+                profileData.funFact = funFact.trim();
+            }
+
+            await setDoc(doc(db, "users", uid), profileData);
         } catch (e) {
             console.log("Could not save profile:", e);
         }
@@ -150,7 +179,7 @@ export default function ProfileScreen() {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 style={{ flex: 1 }}
@@ -162,75 +191,69 @@ export default function ProfileScreen() {
                 >
                     {/* Header */}
                     <View style={styles.header}>
-                        <Text style={styles.title}>who are you?</Text>
+                        <Text style={styles.title}>Who Are You?</Text>
                         <Text style={styles.subtitle}>
-                            tell us about yourself so your classmates can get to know you
+                            {userType === "professor"
+                                ? "Your profile is shown to students when they check into your class"
+                                : "Tell us about yourself so your classmates can get to know you"}
                         </Text>
                     </View>
 
-                    {/* Avatar Preview */}
-                    <View style={styles.avatarPreviewContainer}>
-                        <View style={styles.avatarCircle}>
-                            {avatarType === "photo" && avatarUri ? (
-                                <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
-                            ) : (
-                                <Text style={styles.avatarEmoji}>{emoji}</Text>
-                            )}
+                    {/* Avatar Card */}
+                    <View style={styles.card}>
+                        <View style={styles.avatarPreviewContainer}>
+                            <View style={styles.avatarCircle}>
+                                {avatarType === "photo" && avatarUri ? (
+                                    <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+                                ) : (
+                                    <Text style={styles.avatarEmoji}>{emoji}</Text>
+                                )}
+                            </View>
                         </View>
-                    </View>
 
-                    {/* Avatar Type Tabs */}
-                    <View style={styles.tabContainer}>
-                        <TouchableOpacity
-                            activeOpacity={0.7}
-                            onPress={() => setAvatarType("emoji")}
-                            style={[styles.tab, avatarType === "emoji" && styles.tabActive]}
-                        >
-                            <Text style={[styles.tabText, avatarType === "emoji" && styles.tabTextActive]}>
-                                preset icons
-                            </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            activeOpacity={0.7}
-                            onPress={() => {
-                                if (avatarUri) {
-                                    setAvatarType("photo");
-                                } else {
-                                    pickImage();
-                                }
-                            }}
-                            style={[styles.tab, avatarType === "photo" && styles.tabActive]}
-                        >
-                            <Text style={[styles.tabText, avatarType === "photo" && styles.tabTextActive]}>
-                                upload photo
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
+                        <View style={styles.tabContainer}>
+                            <TouchableOpacity
+                                activeOpacity={0.7}
+                                onPress={() => setAvatarType("emoji")}
+                                style={[styles.tab, avatarType === "emoji" && styles.tabActive]}
+                            >
+                                <Text style={[styles.tabText, avatarType === "emoji" && styles.tabTextActive]}>
+                                    Preset Icons
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                activeOpacity={0.7}
+                                onPress={() => {
+                                    if (avatarUri) {
+                                        setAvatarType("photo");
+                                    } else {
+                                        pickImage();
+                                    }
+                                }}
+                                style={[styles.tab, avatarType === "photo" && styles.tabActive]}
+                            >
+                                <Text style={[styles.tabText, avatarType === "photo" && styles.tabTextActive]}>
+                                    Upload Photo
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
 
-                    {/* Emoji Grid (shown when emoji tab is active) */}
-                    {avatarType === "emoji" && (
-                        <View style={styles.section}>
+                        {avatarType === "emoji" && (
                             <View style={styles.emojiGrid}>
                                 {EMOJI_OPTIONS.map((e) => (
                                     <TouchableOpacity
                                         activeOpacity={0.7}
                                         key={e}
                                         onPress={() => setEmoji(e)}
-                                        style={[
-                                            styles.emojiOption,
-                                            emoji === e && styles.emojiSelected,
-                                        ]}
+                                        style={[styles.emojiOption, emoji === e && styles.emojiSelected]}
                                     >
                                         <Text style={styles.emojiText}>{e}</Text>
                                     </TouchableOpacity>
                                 ))}
                             </View>
-                        </View>
-                    )}
+                        )}
 
-                    {/* Photo Upload (shown when photo tab is active) */}
-                    {avatarType === "photo" && (
-                        <View style={styles.section}>
+                        {avatarType === "photo" && (
                             <View style={styles.photoActions}>
                                 <TouchableOpacity
                                     activeOpacity={0.7}
@@ -238,7 +261,7 @@ export default function ProfileScreen() {
                                     style={styles.photoButton}
                                 >
                                     <Text style={styles.photoButtonText}>
-                                        {avatarUri ? "📷  change photo" : "📷  choose from library"}
+                                        {avatarUri ? "📷  Change Photo" : "📷  Choose from Library"}
                                     </Text>
                                 </TouchableOpacity>
                                 {avatarUri && (
@@ -247,15 +270,15 @@ export default function ProfileScreen() {
                                         onPress={removePhoto}
                                         style={styles.removeButton}
                                     >
-                                        <Text style={styles.removeButtonText}>remove photo</Text>
+                                        <Text style={styles.removeButtonText}>Remove Photo</Text>
                                     </TouchableOpacity>
                                 )}
                             </View>
-                        </View>
-                    )}
+                        )}
+                    </View>
                     
-                    {/* Role Selection */}
-                    <View style={styles.section}>
+                    {/* Role Selection Card */}
+                    <View style={styles.card}>
                         <Text style={styles.label}>your role</Text>
                         <View style={styles.tabContainer}>
                             <TouchableOpacity
@@ -279,6 +302,8 @@ export default function ProfileScreen() {
                         </View>
                     </View>
 
+                    {/* Fields Card */}
+                    <View style={styles.card}>
                     {/* Name */}
                     <View style={styles.section}>
                         <Text style={styles.label}>name *</Text>
@@ -287,75 +312,147 @@ export default function ProfileScreen() {
                             value={name}
                             onChangeText={setName}
                             placeholder="what should people call you?"
-                            placeholderTextColor="#999"
+                            placeholderTextColor="#bbb"
                         />
                     </View>
 
-                    {/* Major */}
-                    <View style={styles.section}>
-                        <Text style={styles.label}>major / field</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={major}
-                            onChangeText={setMajor}
-                            placeholder="e.g. Computer Science"
-                            placeholderTextColor="#999"
-                        />
-                    </View>
+                    {userType === "student" ? (
+                        <>
+                            {/* Major */}
+                            <View style={styles.section}>
+                                <Text style={styles.label}>major / field</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={major}
+                                    onChangeText={setMajor}
+                                    placeholder="e.g. Computer Science"
+                                    placeholderTextColor="#bbb"
+                                />
+                            </View>
 
-                    {/* Year */}
-                    <View style={styles.section}>
-                        <Text style={styles.label}>year</Text>
-                        <View style={styles.yearGrid}>
-                            {YEAR_OPTIONS.map((y) => (
-                                <TouchableOpacity
-                                    activeOpacity={0.7}
-                                    key={y}
-                                    onPress={() => setYear(y)}
-                                    style={[
-                                        styles.yearOption,
-                                        year === y && styles.yearSelected,
-                                    ]}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.yearText,
-                                            year === y && styles.yearTextSelected,
-                                        ]}
-                                    >
-                                        {y}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </View>
+                            {/* Year */}
+                            <View style={styles.section}>
+                                <Text style={styles.label}>year</Text>
+                                <View style={styles.yearGrid}>
+                                    {YEAR_OPTIONS.map((y) => (
+                                        <TouchableOpacity
+                                            activeOpacity={0.7}
+                                            key={y}
+                                            onPress={() => setYear(y)}
+                                            style={[
+                                                styles.yearOption,
+                                                year === y && styles.yearSelected,
+                                            ]}
+                                        >
+                                            <Text style={[styles.yearText, year === y && styles.yearTextSelected]}>
+                                                {y}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
 
-                    {/* Interests */}
-                    <View style={styles.section}>
-                        <Text style={styles.label}>interests</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={interests}
-                            onChangeText={setInterests}
-                            placeholder="e.g. AI, music, hiking, cooking"
-                            placeholderTextColor="#999"
-                        />
-                    </View>
+                            {/* Interests */}
+                            <View style={styles.section}>
+                                <Text style={styles.label}>interests</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={interests}
+                                    onChangeText={setInterests}
+                                    placeholder="e.g. AI, music, hiking, cooking"
+                                    placeholderTextColor="#bbb"
+                                />
+                            </View>
 
-                    {/* Fun Fact */}
-                    <View style={styles.section}>
-                        <Text style={styles.label}>fun fact</Text>
-                        <TextInput
-                            style={[styles.input, styles.multilineInput]}
-                            value={funFact}
-                            onChangeText={setFunFact}
-                            placeholder="something interesting about you!"
-                            placeholderTextColor="#999"
-                            multiline
-                            numberOfLines={3}
-                            textAlignVertical="top"
-                        />
-                    </View>
+                            {/* Fun Fact */}
+                            <View style={styles.section}>
+                                <Text style={styles.label}>fun fact</Text>
+                                <TextInput
+                                    style={[styles.input, styles.multilineInput]}
+                                    value={funFact}
+                                    onChangeText={setFunFact}
+                                    placeholder="something interesting about you!"
+                                    placeholderTextColor="#bbb"
+                                    multiline
+                                    numberOfLines={3}
+                                    textAlignVertical="top"
+                                />
+                            </View>
+                        </>
+                    ) : (
+                        <>
+                            {/* Title */}
+                            <View style={styles.section}>
+                                <Text style={styles.label}>title</Text>
+                                <View style={styles.yearGrid}>
+                                    {TITLE_OPTIONS.map((t) => (
+                                        <TouchableOpacity
+                                            activeOpacity={0.7}
+                                            key={t}
+                                            onPress={() => setTitle(title === t ? "" : t)}
+                                            style={[styles.yearOption, title === t && styles.yearSelected]}
+                                        >
+                                            <Text style={[styles.yearText, title === t && styles.yearTextSelected]}>
+                                                {t}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
+
+                            {/* Department */}
+                            <View style={styles.section}>
+                                <Text style={styles.label}>department</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={department}
+                                    onChangeText={setDepartment}
+                                    placeholder="e.g. Computer Science"
+                                    placeholderTextColor="#bbb"
+                                />
+                            </View>
+
+                            {/* Office Hours */}
+                            <View style={styles.section}>
+                                <Text style={styles.label}>office hours</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={officeHours}
+                                    onChangeText={setOfficeHours}
+                                    placeholder="e.g. Mon & Wed 2–4 pm, Room 305"
+                                    placeholderTextColor="#bbb"
+                                />
+                            </View>
+
+                            {/* Research / Teaching Interests */}
+                            <View style={styles.section}>
+                                <Text style={styles.label}>research / teaching interests</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={researchInterests}
+                                    onChangeText={setResearchInterests}
+                                    placeholder="e.g. HCI, distributed systems, machine learning"
+                                    placeholderTextColor="#bbb"
+                                />
+                            </View>
+
+                            {/* Bio */}
+                            <View style={styles.section}>
+                                <Text style={styles.label}>about</Text>
+                                <TextInput
+                                    style={[styles.input, styles.multilineInput]}
+                                    value={bio}
+                                    onChangeText={setBio}
+                                    placeholder="a short bio students will see on your profile"
+                                    placeholderTextColor="#bbb"
+                                    multiline
+                                    numberOfLines={3}
+                                    textAlignVertical="top"
+                                />
+                            </View>
+                        </>
+                    )}
+                    </View>{/* end fields card */}
 
                     {/* Preview Card */}
                     {name.trim() !== "" && (
@@ -369,12 +466,27 @@ export default function ProfileScreen() {
                                 )}
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.previewName}>{name}</Text>
-                                    {major ? (
-                                        <Text style={styles.previewDetail}>{major}{year ? ` • ${year}` : ""}</Text>
-                                    ) : null}
-                                    {interests ? (
-                                        <Text style={styles.previewInterests}>{interests}</Text>
-                                    ) : null}
+                                    {userType === "student" ? (
+                                        <>
+                                            {major ? (
+                                                <Text style={styles.previewDetail}>{major}{year ? ` • ${year}` : ""}</Text>
+                                            ) : null}
+                                            {interests ? (
+                                                <Text style={styles.previewInterests}>{interests}</Text>
+                                            ) : null}
+                                        </>
+                                    ) : (
+                                        <>
+                                            {(title || department) ? (
+                                                <Text style={styles.previewDetail}>
+                                                    {[title, department].filter(Boolean).join(" • ")}
+                                                </Text>
+                                            ) : null}
+                                            {researchInterests ? (
+                                                <Text style={styles.previewInterests}>{researchInterests}</Text>
+                                            ) : null}
+                                        </>
+                                    )}
                                 </View>
                             </View>
                         </View>
@@ -385,7 +497,7 @@ export default function ProfileScreen() {
             </KeyboardAvoidingView>
 
             {/* Fixed Footer Button */}
-            <View style={styles.footer}>
+            <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + 8, 28) }]}>
                 <TouchableOpacity
                     activeOpacity={0.8}
                     onPress={saveAndContinue}
@@ -396,7 +508,7 @@ export default function ProfileScreen() {
                     ]}
                 >
                     <Text style={styles.submitText}>
-                        {isSaving ? "Saving..." : "Enter Class →"}
+                        {isSaving ? "Saving..." : userType === "professor" ? "Set Up Class →" : "Enter Class →"}
                     </Text>
                 </TouchableOpacity>
             </View>
@@ -407,67 +519,92 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#fff",
+        backgroundColor: "#f7f8fa",
     },
     footer: {
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        backgroundColor: "#fff",
+        paddingHorizontal: 20,
+        paddingTop: 12,
+        paddingBottom: 28,
+        backgroundColor: "#f7f8fa",
         borderTopWidth: 1,
-        borderTopColor: "#f0f0f0",
+        borderTopColor: "#e4e7ed",
     },
     scrollContent: {
-        padding: 24,
+        padding: 20,
         paddingBottom: 40,
     },
     loadingText: {
         textAlign: "center",
         marginTop: 100,
         fontSize: 16,
+        fontFamily: mono,
         color: "#999",
     },
+
+    // Header
     header: {
-        marginBottom: 24,
+        marginBottom: 20,
         marginTop: 8,
     },
     title: {
-        fontSize: 32,
-        fontWeight: "900",
-        color: "#000",
-        marginBottom: 8,
+        fontSize: 30,
+        fontWeight: "700",
+        fontFamily: serif,
+        color: "#111",
+        marginBottom: 6,
     },
     subtitle: {
-        fontSize: 15,
-        color: "#666",
-        lineHeight: 22,
+        fontSize: 14,
+        fontFamily: mono,
+        color: "#888",
+        lineHeight: 20,
     },
+
+    // Cards
+    card: {
+        backgroundColor: "#fff",
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: "#e4e7ed",
+        padding: 18,
+        marginBottom: 16,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+
+    // Avatar
     avatarPreviewContainer: {
         alignItems: "center",
-        marginBottom: 20,
+        marginBottom: 18,
     },
     avatarCircle: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        backgroundColor: "#f5f5f5",
+        width: 96,
+        height: 96,
+        borderRadius: 48,
+        backgroundColor: "#f0f2f5",
         justifyContent: "center",
         alignItems: "center",
-        borderWidth: 3,
-        borderColor: "#000",
+        borderWidth: 2,
+        borderColor: NAVY,
         overflow: "hidden",
     },
     avatarImage: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
+        width: 96,
+        height: 96,
+        borderRadius: 48,
     },
     avatarEmoji: {
-        fontSize: 48,
+        fontSize: 46,
     },
+
+    // Tabs (avatar type + role)
     tabContainer: {
         flexDirection: "row",
         marginBottom: 16,
-        backgroundColor: "#f5f5f5",
+        backgroundColor: "#f0f2f5",
         borderRadius: 12,
         padding: 4,
     },
@@ -478,40 +615,47 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     tabActive: {
-        backgroundColor: "#000",
+        backgroundColor: NAVY,
     },
     tabText: {
         fontSize: 14,
+        fontFamily: mono,
         fontWeight: "600",
-        color: "#666",
+        color: "#888",
     },
     tabTextActive: {
         color: "#fff",
     },
+
+    // Form sections
     section: {
-        marginBottom: 24,
+        marginBottom: 16,
     },
     label: {
-        fontSize: 13,
+        fontSize: 11,
+        fontFamily: mono,
         fontWeight: "600",
         color: "#999",
-        textTransform: "lowercase",
+        textTransform: "uppercase",
+        letterSpacing: 0.8,
         marginBottom: 8,
-        letterSpacing: 0.5,
     },
     input: {
-        backgroundColor: "#f5f5f5",
+        backgroundColor: "#fff",
         borderRadius: 12,
-        padding: 16,
-        fontSize: 16,
-        color: "#000",
+        padding: 14,
+        fontSize: 15,
+        fontFamily: serif,
+        color: "#111",
         borderWidth: 1,
-        borderColor: "#eee",
+        borderColor: "#e4e7ed",
     },
     multilineInput: {
-        minHeight: 80,
-        paddingTop: 16,
+        minHeight: 88,
+        paddingTop: 14,
     },
+
+    // Emoji grid
     emojiGrid: {
         flexDirection: "row",
         flexWrap: "wrap",
@@ -521,46 +665,51 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 12,
-        backgroundColor: "#f5f5f5",
+        backgroundColor: "#f0f2f5",
         justifyContent: "center",
         alignItems: "center",
         borderWidth: 2,
         borderColor: "transparent",
     },
     emojiSelected: {
-        borderColor: "#000",
-        backgroundColor: "#f0f0ff",
+        borderColor: NAVY,
+        backgroundColor: "#eef1f7",
     },
     emojiText: {
         fontSize: 24,
     },
+
+    // Photo upload
     photoActions: {
         gap: 10,
     },
     photoButton: {
-        backgroundColor: "#f5f5f5",
+        backgroundColor: "#f7f8fa",
         paddingVertical: 16,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: "#eee",
+        borderColor: "#e4e7ed",
         borderStyle: "dashed",
     },
     photoButtonText: {
         textAlign: "center",
-        fontSize: 15,
-        color: "#333",
+        fontSize: 14,
+        fontFamily: mono,
+        color: "#555",
         fontWeight: "500",
     },
     removeButton: {
-        paddingVertical: 10,
-        borderRadius: 10,
+        paddingVertical: 8,
     },
     removeButtonText: {
         textAlign: "center",
-        fontSize: 14,
+        fontSize: 13,
+        fontFamily: mono,
         color: "#e53e3e",
         fontWeight: "500",
     },
+
+    // Year / Title pill grids
     yearGrid: {
         flexDirection: "row",
         flexWrap: "wrap",
@@ -570,84 +719,99 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 10,
         borderRadius: 20,
-        backgroundColor: "#f5f5f5",
+        backgroundColor: "#f0f2f5",
         borderWidth: 1,
-        borderColor: "#eee",
+        borderColor: "#e4e7ed",
     },
     yearSelected: {
-        backgroundColor: "#000",
-        borderColor: "#000",
+        backgroundColor: NAVY,
+        borderColor: NAVY,
     },
     yearText: {
-        fontSize: 14,
-        color: "#333",
+        fontSize: 13,
+        fontFamily: mono,
+        color: "#555",
         fontWeight: "500",
     },
     yearTextSelected: {
         color: "#fff",
     },
+
+    // Preview card
     previewCard: {
-        backgroundColor: "#fafafa",
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 24,
+        backgroundColor: "#fff",
+        borderRadius: 20,
+        padding: 18,
+        marginBottom: 16,
         borderWidth: 1,
-        borderColor: "#eee",
+        borderColor: "#e4e7ed",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
     },
     previewLabel: {
         fontSize: 11,
+        fontFamily: mono,
         fontWeight: "600",
-        color: "#bbb",
+        color: "#aaa",
         textTransform: "uppercase",
+        letterSpacing: 0.8,
         marginBottom: 12,
-        letterSpacing: 1,
     },
     previewContent: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 12,
+        gap: 14,
     },
     previewImage: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 52,
+        height: 52,
+        borderRadius: 26,
     },
     previewEmoji: {
-        fontSize: 40,
+        fontSize: 42,
     },
     previewName: {
         fontSize: 18,
         fontWeight: "700",
-        color: "#000",
+        fontFamily: serif,
+        color: "#111",
     },
     previewDetail: {
-        fontSize: 14,
+        fontSize: 13,
+        fontFamily: mono,
         color: "#666",
-        marginTop: 2,
+        marginTop: 3,
     },
     previewInterests: {
-        fontSize: 13,
+        fontSize: 12,
+        fontFamily: mono,
         color: "#999",
-        marginTop: 4,
+        marginTop: 3,
     },
+
+    // Submit button
     submitButton: {
-        backgroundColor: "#000",
+        backgroundColor: NAVY,
         paddingVertical: 18,
         borderRadius: 16,
-        shadowColor: "#000",
+        shadowColor: NAVY,
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
+        shadowOpacity: 0.25,
         shadowRadius: 12,
         elevation: 4,
     },
     submitDisabled: {
-        backgroundColor: "#ccc",
+        backgroundColor: "#c8cdd6",
         shadowOpacity: 0,
     },
     submitText: {
         color: "#fff",
-        fontSize: 18,
-        fontWeight: "600",
+        fontSize: 17,
+        fontFamily: mono,
+        fontWeight: "700",
         textAlign: "center",
     },
 });

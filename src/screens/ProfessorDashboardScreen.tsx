@@ -17,7 +17,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { db } from "../config/firebase";
-import { doc, collection, onSnapshot, writeBatch, getDoc, setDoc } from "firebase/firestore";
+import { doc, collection, onSnapshot, writeBatch, getDoc, setDoc, getDocs, deleteDoc } from "firebase/firestore";
 import { ensureAnonymousUid } from "../utils/auth";
 import * as ImagePicker from "expo-image-picker";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
@@ -376,6 +376,36 @@ export default function ProfessorDashboardScreen() {
         }
     };
 
+    const endSession = () => {
+        Alert.alert(
+            "End Session",
+            "This will clear all check-ins and seat assignments for this room. Students will need to re-scan to rejoin.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "End Session",
+                    style: "destructive",
+                    onPress: async () => {
+                        if (!roomId) return;
+                        try {
+                            const snap = await getDocs(
+                                collection(db, "rooms", roomId, "checkins")
+                            );
+                            const batch = writeBatch(db);
+                            snap.forEach((d) =>
+                                batch.delete(doc(db, "rooms", roomId, "checkins", d.id))
+                            );
+                            await batch.commit();
+                        } catch (e) {
+                            console.log("Could not end session:", e);
+                        }
+                        router.dismissAll();
+                    },
+                },
+            ]
+        );
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView
@@ -477,12 +507,31 @@ export default function ProfessorDashboardScreen() {
                     )}
                 </View>
 
+                {/* End Session — clears all check-ins */}
+                <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={endSession}
+                    style={styles.endSessionButton}
+                >
+                    <Text style={styles.endSessionText}>End Session</Text>
+                </TouchableOpacity>
+
+                {/* Exit Room — leaves without clearing data */}
                 <TouchableOpacity
                     activeOpacity={0.7}
-                    onPress={() => router.dismissAll()}
+                    onPress={() => {
+                        Alert.alert(
+                            "Exit Without Ending?",
+                            "Check-ins will remain in the room. The seating map will show stale data until a new session is started.",
+                            [
+                                { text: "Cancel", style: "cancel" },
+                                { text: "Exit Anyway", style: "destructive", onPress: () => router.dismissAll() },
+                            ]
+                        );
+                    }}
                     style={styles.exitButton}
                 >
-                    <Text style={styles.exitText}>Exit Room</Text>
+                    <Text style={styles.exitText}>Exit (Keep Check-ins)</Text>
                 </TouchableOpacity>
             </ScrollView>
 
@@ -669,6 +718,24 @@ const styles = StyleSheet.create({
         color: "#999",
         fontFamily: monoFont,
     },
+    endSessionButton: {
+        backgroundColor: "#c0392b",
+        borderRadius: 14,
+        paddingVertical: 16,
+        alignItems: "center",
+        marginBottom: 10,
+        shadowColor: "#c0392b",
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    endSessionText: {
+        fontSize: 16,
+        fontFamily: monoFont,
+        fontWeight: "700",
+        color: "#fff",
+    },
     exitButton: {
         borderWidth: 1,
         borderColor: "#ddd",
@@ -677,8 +744,9 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     exitText: {
-        fontSize: 15,
-        color: "#999",
+        fontSize: 14,
+        color: "#aaa",
+        fontFamily: monoFont,
         fontWeight: "500",
     },
 });

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { db } from "../config/firebase";
 import { doc, getDoc } from "firebase/firestore";
@@ -12,6 +13,10 @@ import Animated, {
     withTiming,
     Easing,
 } from "react-native-reanimated";
+
+const NAVY  = "#1e3a5f";
+const serif = Platform.select({ ios: "Georgia", android: "serif", default: "serif" });
+const mono  = Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" });
 
 function ScanningOverlay() {
     const scanLineTop = useSharedValue(0);
@@ -81,6 +86,7 @@ function QRCameraScanner({ onScan }: { onScan: (data: string) => void }) {
 
 export default function QRScannerScreen() {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const [permission, requestPermission] = useCameraPermissions();
     const [isScanning, setIsScanning] = useState(false);
     const [scannedData, setScannedData] = useState<string | null>(null);
@@ -167,8 +173,16 @@ export default function QRScannerScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
             <Animated.View style={styles.contentWrapper}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <Text style={styles.title}>Check In</Text>
+                    <Text style={styles.subtitle}>
+                        Scan the QR code on your desk to get started
+                    </Text>
+                </View>
+
                 <View style={styles.card}>
                     {/* QR Icon */}
                     <View style={styles.iconContainer}>
@@ -196,11 +210,10 @@ export default function QRScannerScreen() {
                                 style={styles.primaryButton}
                             >
                                 <Text style={styles.primaryButtonText}>
-                                    scan desk QR code
+                                    Scan Desk QR Code
                                 </Text>
                             </TouchableOpacity>
 
-                            {/* Test bypass button */}
                             <TouchableOpacity
                                 activeOpacity={0.7}
                                 onPress={handleTestBypass}
@@ -213,7 +226,7 @@ export default function QRScannerScreen() {
                         </View>
                     )}
 
-                    {/* Camera scanner — separate component for clean lifecycle */}
+                    {/* Camera scanner */}
                     {isScanning && (
                         <View style={{ gap: 16 }}>
                             <QRCameraScanner onScan={handleBarcodeScanned} />
@@ -260,10 +273,6 @@ export default function QRScannerScreen() {
                         </View>
                     )}
                 </View>
-
-                <Text style={styles.helpText}>
-                    Scan the QR code on your desk to check in
-                </Text>
             </Animated.View>
         </View>
     );
@@ -272,24 +281,54 @@ export default function QRScannerScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#fff",
+        backgroundColor: "#f7f8fa",
         justifyContent: "center",
         alignItems: "center",
     },
     contentWrapper: {
         width: "100%",
         maxWidth: 448,
-        padding: 24,
+        padding: 20,
     },
+
+    // Header
+    header: {
+        marginBottom: 20,
+        paddingHorizontal: 4,
+    },
+    title: {
+        fontSize: 30,
+        fontWeight: "700",
+        fontFamily: serif,
+        color: "#111",
+        marginBottom: 6,
+    },
+    subtitle: {
+        fontSize: 14,
+        fontFamily: mono,
+        color: "#888",
+        lineHeight: 20,
+    },
+
+    // Main card
     card: {
         backgroundColor: "#fff",
-        borderRadius: 16,
-        padding: 32,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: "#e4e7ed",
+        padding: 28,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
     },
+
+    // QR icon
     iconContainer: {
         alignItems: "center",
         justifyContent: "center",
-        marginBottom: 40,
+        marginBottom: 32,
     },
     qrIcon: {
         width: 64,
@@ -301,7 +340,7 @@ const styles = StyleSheet.create({
         width: 56,
         height: 56,
         borderWidth: 1.5,
-        borderColor: "#000",
+        borderColor: NAVY,
         borderRadius: 4,
         position: "relative",
     },
@@ -310,7 +349,7 @@ const styles = StyleSheet.create({
         width: 16,
         height: 16,
         borderWidth: 1.5,
-        borderColor: "#000",
+        borderColor: NAVY,
         borderRadius: 2,
         justifyContent: "center",
         alignItems: "center",
@@ -318,54 +357,61 @@ const styles = StyleSheet.create({
     qrDot: {
         width: 6,
         height: 6,
-        backgroundColor: "#000",
+        backgroundColor: NAVY,
         borderRadius: 1,
     },
+
+    // Buttons
     primaryButton: {
-        backgroundColor: "#000",
+        backgroundColor: NAVY,
         paddingVertical: 18,
-        borderRadius: 16,
-        shadowColor: "#000",
+        borderRadius: 14,
+        shadowColor: NAVY,
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
+        shadowOpacity: 0.25,
         shadowRadius: 12,
         elevation: 4,
     },
     primaryButtonText: {
         color: "#fff",
-        fontSize: 17,
-        fontWeight: "600",
+        fontSize: 16,
+        fontFamily: mono,
+        fontWeight: "700",
         textAlign: "center",
     },
     bypassButton: {
-        backgroundColor: "#f5f5f5",
+        backgroundColor: "#f0f2f5",
         paddingVertical: 14,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: "#eee",
+        borderColor: "#e4e7ed",
     },
     bypassButtonText: {
         color: "#666",
-        fontSize: 15,
+        fontSize: 14,
+        fontFamily: mono,
         fontWeight: "500",
         textAlign: "center",
     },
     cancelButton: {
         backgroundColor: "#fff",
-        borderWidth: 2,
-        borderColor: "#000",
+        borderWidth: 1.5,
+        borderColor: NAVY,
         paddingVertical: 14,
         borderRadius: 12,
     },
     cancelButtonText: {
-        color: "#000",
+        color: NAVY,
+        fontFamily: mono,
         fontWeight: "600",
         textAlign: "center",
-        fontSize: 16,
+        fontSize: 15,
     },
+
+    // Camera
     cameraContainer: {
         backgroundColor: "#000",
-        borderRadius: 12,
+        borderRadius: 16,
         overflow: "hidden",
         aspectRatio: 1,
     },
@@ -378,7 +424,7 @@ const styles = StyleSheet.create({
         width: 256,
         height: 256,
         borderWidth: 2,
-        borderColor: "rgba(255, 255, 255, 0.5)",
+        borderColor: "rgba(255, 255, 255, 0.4)",
         borderRadius: 16,
         position: "relative",
         overflow: "hidden",
@@ -393,7 +439,7 @@ const styles = StyleSheet.create({
         left: 0,
         borderTopWidth: 2,
         borderLeftWidth: 2,
-        borderColor: "#000",
+        borderColor: "#fff",
         borderTopLeftRadius: 8,
     },
     cornerTR: {
@@ -401,7 +447,7 @@ const styles = StyleSheet.create({
         right: 0,
         borderTopWidth: 2,
         borderRightWidth: 2,
-        borderColor: "#000",
+        borderColor: "#fff",
         borderTopRightRadius: 8,
     },
     cornerBL: {
@@ -409,7 +455,7 @@ const styles = StyleSheet.create({
         left: 0,
         borderBottomWidth: 2,
         borderLeftWidth: 2,
-        borderColor: "#000",
+        borderColor: "#fff",
         borderBottomLeftRadius: 8,
     },
     cornerBR: {
@@ -417,7 +463,7 @@ const styles = StyleSheet.create({
         right: 0,
         borderBottomWidth: 2,
         borderRightWidth: 2,
-        borderColor: "#000",
+        borderColor: "#fff",
         borderBottomRightRadius: 8,
     },
     scanLine: {
@@ -425,13 +471,15 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         height: 2,
-        backgroundColor: "#000",
+        backgroundColor: "rgba(255,255,255,0.7)",
     },
+
+    // Result card
     resultCard: {
-        backgroundColor: "#fff",
-        borderWidth: 2,
-        borderColor: "#000",
-        borderRadius: 12,
+        backgroundColor: "#f7f8fa",
+        borderWidth: 1,
+        borderColor: "#e4e7ed",
+        borderRadius: 16,
         padding: 24,
     },
     checkContainer: {
@@ -443,26 +491,22 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 24,
-        backgroundColor: "#000",
+        backgroundColor: NAVY,
         justifyContent: "center",
         alignItems: "center",
     },
     resultTitle: {
-        fontWeight: "600",
-        color: "#000",
+        fontFamily: serif,
+        fontWeight: "700",
+        color: "#111",
         textAlign: "center",
-        fontSize: 16,
-        marginBottom: 8,
+        fontSize: 17,
+        marginBottom: 6,
     },
     resultData: {
-        fontSize: 14,
-        color: "#666",
+        fontSize: 12,
+        fontFamily: mono,
+        color: "#888",
         textAlign: "center",
-    },
-    helpText: {
-        textAlign: "center",
-        color: "#999",
-        fontSize: 14,
-        marginTop: 24,
     },
 });
