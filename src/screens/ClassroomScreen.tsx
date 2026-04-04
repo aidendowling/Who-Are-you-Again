@@ -10,7 +10,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { db } from "../config/firebase";
-import { doc, getDoc, setDoc, collection, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, onSnapshot, query, where, getDocs } from "firebase/firestore";
 import { ensureAnonymousUid } from "../utils/auth";
 import Animated, {
     useSharedValue,
@@ -42,6 +42,7 @@ export default function ClassroomScreen() {
     const [handRaised, setHandRaised] = useState(false);
     const [students, setStudents] = useState<StudentInfo[]>([]);
     const [uid, setUid] = useState<string | null>(null);
+    const [seatTaken, setSeatTaken] = useState(false);
     const totalSeats = 140; // later pull from Firebase data
     const occupiedSeats = students.length;
     const availableSeats = Math.max(totalSeats - occupiedSeats, 0);
@@ -122,6 +123,20 @@ export default function ClassroomScreen() {
     const checkInToRoom = async (userId: string) => {
         if (!roomId || !seat) return;
         try {
+            // Check if another student already occupies this seat
+            const seatQuery = query(
+                collection(db, "rooms", roomId, "checkins"),
+                where("seat", "==", seat)
+            );
+            const seatSnap = await getDocs(seatQuery);
+            const takenByOther = seatSnap.docs.some((d) => d.id !== userId);
+
+            if (takenByOther) {
+                setProfile({ name: "Student", emoji: "😊", major: "", year: "" });
+                setSeatTaken(true);
+                return;
+            }
+
             const profileSnap = await getDoc(doc(db, "users", userId));
             const profileData = profileSnap.exists() ? profileSnap.data() : {};
 
@@ -162,6 +177,27 @@ export default function ClassroomScreen() {
             console.log("Could not update hand raise:", e);
         }
     };
+
+    if (seatTaken) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.seatTakenContainer}>
+                    <Text style={styles.seatTakenEmoji}>🪑</Text>
+                    <Text style={styles.seatTakenTitle}>Seat Already Taken</Text>
+                    <Text style={styles.seatTakenBody}>
+                        Seat {seat} is already occupied. Please scan a different desk's QR code.
+                    </Text>
+                    <TouchableOpacity
+                        style={styles.seatTakenButton}
+                        activeOpacity={0.8}
+                        onPress={() => router.replace("/scanner")}
+                    >
+                        <Text style={styles.seatTakenButtonText}>Scan Another Desk</Text>
+                    </TouchableOpacity>
+                </View>
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={styles.container}>
@@ -524,5 +560,41 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: "600",
         color: "#666",
+    },
+    seatTakenContainer: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        padding: 32,
+        gap: 12,
+    },
+    seatTakenEmoji: {
+        fontSize: 56,
+        marginBottom: 8,
+    },
+    seatTakenTitle: {
+        fontSize: 22,
+        fontWeight: "700",
+        color: "#111",
+        textAlign: "center",
+    },
+    seatTakenBody: {
+        fontSize: 15,
+        color: "#666",
+        textAlign: "center",
+        lineHeight: 22,
+    },
+    seatTakenButton: {
+        marginTop: 16,
+        backgroundColor: "#1e3a5f",
+        paddingVertical: 16,
+        paddingHorizontal: 32,
+        borderRadius: 14,
+    },
+    seatTakenButtonText: {
+        color: "#fff",
+        fontSize: 16,
+        fontWeight: "700",
+        textAlign: "center",
     },
 });

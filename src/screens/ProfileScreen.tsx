@@ -191,11 +191,11 @@ export default function ProfileScreen() {
                 >
                     {/* Header */}
                     <View style={styles.header}>
-                        <Text style={styles.title}>who are you?</Text>
+                        <Text style={styles.title}>Who Are You?</Text>
                         <Text style={styles.subtitle}>
                             {userType === "professor"
-                                ? "your profile is shown to students when they check into your class"
-                                : "tell us about yourself so your classmates can get to know you"}
+                                ? "Your profile is shown to students when they check into your class"
+                                : "Tell us about yourself so your classmates can get to know you"}
                         </Text>
                     </View>
 
@@ -218,7 +218,7 @@ export default function ProfileScreen() {
                                 style={[styles.tab, avatarType === "emoji" && styles.tabActive]}
                             >
                                 <Text style={[styles.tabText, avatarType === "emoji" && styles.tabTextActive]}>
-                                    preset icons
+                                    Preset Icons
                                 </Text>
                             </TouchableOpacity>
                             <TouchableOpacity
@@ -233,7 +233,7 @@ export default function ProfileScreen() {
                                 style={[styles.tab, avatarType === "photo" && styles.tabActive]}
                             >
                                 <Text style={[styles.tabText, avatarType === "photo" && styles.tabTextActive]}>
-                                    upload photo
+                                    Upload Photo
                                 </Text>
                             </TouchableOpacity>
                         </View>
@@ -261,7 +261,7 @@ export default function ProfileScreen() {
                                     style={styles.photoButton}
                                 >
                                     <Text style={styles.photoButtonText}>
-                                        {avatarUri ? "📷  change photo" : "📷  choose from library"}
+                                        {avatarUri ? "📷  Change Photo" : "📷  Choose from Library"}
                                     </Text>
                                 </TouchableOpacity>
                                 {avatarUri && (
@@ -270,7 +270,7 @@ export default function ProfileScreen() {
                                         onPress={removePhoto}
                                         style={styles.removeButton}
                                     >
-                                        <Text style={styles.removeButtonText}>remove photo</Text>
+                                        <Text style={styles.removeButtonText}>Remove Photo</Text>
                                     </TouchableOpacity>
                                 )}
                             </View>
