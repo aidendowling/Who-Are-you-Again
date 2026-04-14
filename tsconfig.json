@@ -15,5 +15,9 @@
     "nativewind-env.d.ts",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
+  ],
+  "exclude": [
+    "functions",
+    "test"
   ]
 }
