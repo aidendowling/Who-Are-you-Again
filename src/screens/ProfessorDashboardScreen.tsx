@@ -19,6 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { db } from "../config/firebase";
 import { doc, collection, onSnapshot, writeBatch, getDoc, setDoc, getDocs, deleteDoc } from "firebase/firestore";
 import { ensureAnonymousUid } from "../utils/auth";
+import { clearRoomOccupancy } from "../lib/seatManifest";
 import * as ImagePicker from "expo-image-picker";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 
@@ -322,7 +323,7 @@ export default function ProfessorDashboardScreen() {
                     list.push({
                         id: d.id,
                         name: data.name || "Anonymous",
-                        seat: data.seat || "?",
+                        seat: data.seatLabel || data.seat || "?",
                         handRaised: data.handRaised || false,
                         checkedInAt: data.checkedInAt || new Date().toISOString(),
                     });
@@ -396,6 +397,7 @@ export default function ProfessorDashboardScreen() {
                                 batch.delete(doc(db, "rooms", roomId, "checkins", d.id))
                             );
                             await batch.commit();
+                            await clearRoomOccupancy(roomId);
                         } catch (e) {
                             console.log("Could not end session:", e);
                         }

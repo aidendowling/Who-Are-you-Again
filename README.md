@@ -194,9 +194,53 @@ Home (/) → Profile (/profile) → Scanner (/scanner) → Classroom (/classroom
    - Press `i` to open in iOS Simulator
    - Press `a` to open in Android Simulator
    - Press `w` to open in web browser
-   - Scan the QR code with Expo Go on your phone
+
+### ⚡ Local Development (Testing & Backend)
+
+For full functionality (like joining rooms and profile persistence) without deploying to production, use the Firebase Emulators:
+
+1. **Build Cloud Functions** (required if you change function code):
+   ```bash
+   npm --prefix functions run build
+   ```
+
+2. **Start Emulators**:
+   In a separate terminal, run:
+   ```bash
+   npm run emulators
+   ```
+
+3. **Configure App to use Emulators**:
+   Ensure `EXPO_PUBLIC_USE_FIREBASE_EMULATORS=1` is set in your `.env`.
+   and `EXPO_PUBLIC_FIREBASE_PROJECT_ID=demo-wh0ru-aga1n`
+
+4. **Restart Expo with Clear Cache** (if you just changed `.env`):
+   ```bash
+   npx expo start -c
+   ```
+
+5. **Use Test Room**:
+   In the scanner screen, tap **"Skip — Use Test Room"**. This will automatically seed a mock classroom in your local emulator.
 
 ---
+
+## Testing
+
+The repo now has a layered test harness instead of relying on manual Expo tapping:
+
+- `npm run typecheck` — app + Cloud Functions TypeScript validation
+- `npm run test:domain` — pure classroom/seat/proximity domain tests
+- `npm run test:app` — app smoke tests for scanner, classroom, and nearby flows
+- `npm run test:firebase` — Firebase Auth/Firestore/Functions emulator integration tests
+- `npm run test:ci` — full verification gate used by CI
+
+### Local Emulator Notes
+
+- Install root dependencies with `npm install`
+- Install function dependencies with `npm --prefix functions install`
+- Use `npm run emulators` to inspect the Firebase emulator stack manually
+- The test-room bypass is only available in development or when `EXPO_PUBLIC_ENABLE_TEST_SUPPORT=1`
+- To point the Expo app at emulators, set `EXPO_PUBLIC_USE_FIREBASE_EMULATORS=1`
 
 
 ---
@@ -300,9 +344,15 @@ If it returns a version number, your environment is correctly configured for Exp
 
 ---
 
-## Environment Variables
+All Firebase config is loaded from `.env` via Expo's built-in `EXPO_PUBLIC_` prefix support.
 
-All Firebase config is loaded from `.env` via Expo's built-in `EXPO_PUBLIC_` prefix support. The `.env` file is gitignored to keep API keys out of version control.
+| Variable | Description |
+|---|---|
+| `EXPO_PUBLIC_FIREBASE_*` | Standard Firebase configuration keys |
+| `EXPO_PUBLIC_USE_FIREBASE_EMULATORS` | Set to `1` to use local emulators (Auth/Firestore/Functions) |
+| `EXPO_PUBLIC_ENABLE_TEST_SUPPORT` | Set to `1` to enable the "Test Room" bypass in builds |
+
+> **Note:** If you change these variables, restart Expo with `npx expo start -c` to clear the bundler cache.
 
 ---
 

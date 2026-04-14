@@ -30,6 +30,13 @@ import {
     getDoc,
 } from "firebase/firestore";
 import { ensureAnonymousUid } from "../utils/auth";
+import { syncSeatManifest } from "../lib/seatManifest";
+import {
+    DEFAULT_LAYOUT,
+    generateCols,
+    LayoutConfig,
+    totalSeatsForLayout,
+} from "../lib/seating";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 
@@ -46,36 +53,6 @@ const mono  = Platform.select({ ios: "Menlo", android: "monospace", default: "mo
 const ZOOM_STEPS  = [0.65, 0.85, 1.0];
 const ZOOM_LABELS = ["65%", "85%", "100%"];
 const BASE_SEAT   = 46;
-
-// ─── Layout ───────────────────────────────────────────────────────────────────
-
-interface LayoutConfig {
-    id?: string;
-    name: string;
-    rows: number;
-    seatsPerSection: number;
-    sections: 1 | 2 | 3 | 4;
-    createdBy?: string;
-}
-
-const DEFAULT_LAYOUT: LayoutConfig = {
-    name: "New Layout",
-    rows: 8,
-    seatsPerSection: 6,
-    sections: 2,
-};
-
-// ─── Layout helpers ───────────────────────────────────────────────────────────
-
-function generateCols(count: number, offset = 0): string[] {
-    return Array.from({ length: count }, (_, i) =>
-        String.fromCharCode(65 + offset + i)
-    );
-}
-
-function totalSeatsForLayout(layout: LayoutConfig): number {
-    return layout.rows * layout.seatsPerSection * layout.sections;
-}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -291,15 +268,10 @@ function LayoutEditorSheet({
     };
 
     const handleApply = async () => {
-        // Save layout choice to room doc so it persists
         try {
-            await setDoc(
-                doc(db, "rooms", roomId),
-                { layout: { name: draftLayout.name, rows, seatsPerSection, sections } },
-                { merge: true }
-            );
+            await syncSeatManifest(roomId, draftLayout);
         } catch (e) {
-            console.log("Could not persist room layout:", e);
+            console.log("Could not persist room layout manifest:", e);
         }
         onApply(draftLayout);
         onClose();
@@ -579,6 +551,14 @@ export default function SeatingMapScreen() {
         })();
     }, [roomId]);
 
+    useEffect(() => {
+        if (!roomId) return;
+
+        syncSeatManifest(roomId, layout).catch((error) => {
+            console.log("Could not sync seat manifest:", error);
+        });
+    }, [roomId, layout]);
+
     // Live checkin listener
     useEffect(() => {
         if (!roomId) return;
@@ -590,7 +570,7 @@ export default function SeatingMapScreen() {
                 list.push({
                     id: d.id,
                     name: data.name || "Anonymous",
-                    seat: (data.seat || "").toUpperCase(),
+                    seat: ((data.seatLabel || data.seat) || "").toUpperCase(),
                     handRaised: data.handRaised || false,
                     checkedInAt: data.checkedInAt || new Date().toISOString(),
                     emoji: data.emoji || "😊",

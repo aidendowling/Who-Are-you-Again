@@ -1,0 +1,49 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function currentUser() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isProfessor() {
+      return isSignedIn() && currentUser().data.userType == "professor";
+    }
+
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /rooms/{roomId} {
+      allow read: if isSignedIn();
+      allow write: if isProfessor();
+
+      match /seats/{seatId} {
+        allow read: if isSignedIn();
+        allow write: if isProfessor();
+      }
+
+      match /seatTags/{tagId} {
+        allow read: if isProfessor();
+        allow write: if isProfessor();
+      }
+
+      match /checkins/{uid} {
+        allow read: if isProfessor() || (isSignedIn() && request.auth.uid == uid);
+        allow create, delete: if isProfessor();
+        allow update: if isProfessor() || (
+          isSignedIn() &&
+          request.auth.uid == uid &&
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(["handRaised"])
+        );
+      }
+
+      match /occupancy/{seatId} {
+        allow read, write: if isProfessor();
+      }
+    }
+  }
+}

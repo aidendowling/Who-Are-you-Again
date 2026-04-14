@@ -4,7 +4,14 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { db } from "../config/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import {
+    collectionGroup,
+    doc,
+    getDoc,
+    getDocs,
+    query,
+    where,
+} from "firebase/firestore";
 import { ensureAnonymousUid } from "../utils/auth";
 import Animated, {
     useSharedValue,
@@ -13,6 +20,9 @@ import Animated, {
     withTiming,
     Easing,
 } from "react-native-reanimated";
+import { checkInToSeat, syncRoomManifest } from "../lib/proximityApi";
+import { buildSeatManifest, DEFAULT_LAYOUT, resolveSeatByLabel } from "../lib/seating";
+import { bootstrapTestRoom, isTestSupportEnabled } from "../lib/testSupport";
 
 const NAVY  = "#1e3a5f";
 const serif = Platform.select({ ios: "Georgia", android: "serif", default: "serif" });
@@ -91,6 +101,9 @@ export default function QRScannerScreen() {
     const [isScanning, setIsScanning] = useState(false);
     const [scannedData, setScannedData] = useState<string | null>(null);
     const [uid, setUid] = useState<string | null>(null);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [isResolvingScan, setIsResolvingScan] = useState(false);
+    const canUseTestSupport = isTestSupportEnabled();
 
     useEffect(() => {
         const initializeIdentity = async () => {
@@ -112,6 +125,7 @@ export default function QRScannerScreen() {
                 return;
             }
         }
+        setErrorMessage(null);
         setScannedData(null);
         setIsScanning(true);
     };
@@ -119,56 +133,124 @@ export default function QRScannerScreen() {
     const stopScanning = () => {
         setIsScanning(false);
         setScannedData(null);
+        setErrorMessage(null);
+        setIsResolvingScan(false);
+    };
+
+    const resolveUserType = async () => {
+        const resolvedUid = uid ?? await ensureAnonymousUid();
+        if (!uid) setUid(resolvedUid);
+
+        const userSnap = await getDoc(doc(db, "users", resolvedUid));
+        const userType = userSnap.exists() ? userSnap.data().userType : "student";
+        return { resolvedUid, userType };
+    };
+
+    const resolveRoomIdFromTag = async (tagId: string) => {
+        const tagSnap = await getDocs(
+            query(collectionGroup(db, "seatTags"), where("tagId", "==", tagId))
+        );
+        const first = tagSnap.docs[0];
+        return first?.data()?.roomId as string | undefined;
+    };
+
+    const handleStudentCheckIn = async (tagId: string) => {
+        const result = await checkInToSeat(tagId, "qr");
+        router.push(
+            `/classroom?roomId=${result.roomId}&seatId=${result.seatId}&seatLabel=${encodeURIComponent(result.seatLabel)}` as any
+        );
+    };
+
+    const handleLegacyPayload = async (roomId: string, rawSeatLabel: string) => {
+        const roomSnap = await getDoc(doc(db, "rooms", roomId));
+        const layout = roomSnap.exists() && roomSnap.data().layout
+            ? roomSnap.data().layout
+            : DEFAULT_LAYOUT;
+        const seats = buildSeatManifest(roomId, layout);
+        const seat = resolveSeatByLabel(seats, rawSeatLabel);
+
+        if (!seat) {
+            throw new Error(`Could not resolve seat ${rawSeatLabel} in room ${roomId}.`);
+        }
+
+        await syncRoomManifest(roomId);
+        return handleStudentCheckIn(seat.tagId);
     };
 
     const handleBarcodeScanned = async (data: string) => {
         setScannedData(data);
         setIsScanning(false);
+        setIsResolvingScan(true);
+        setErrorMessage(null);
 
-        // Parse QR data — expected format: wh0ru://room/{roomId}/seat/{seatId}
-        const match = data.match(/wh0ru:\/\/room\/(.+)\/seat\/(.+)/);
-        if (match) {
-            const roomId = match[1];
-            const seat = match[2];
-            
-            try {
-                const resolvedUid = uid ?? await ensureAnonymousUid();
-                if (!uid) setUid(resolvedUid);
+        try {
+            const { userType } = await resolveUserType();
+            const tagMatch = data.match(/(?:synapse|wh0ru):\/\/(?:seat-tag|tag)\/([^/?#]+)/i);
 
-                const userSnap = await getDoc(doc(db, "users", resolvedUid));
-                const userType = userSnap.exists() ? userSnap.data().userType : "student";
-                
+            if (tagMatch) {
+                const tagId = decodeURIComponent(tagMatch[1]);
                 if (userType === "professor") {
+                    const roomId = await resolveRoomIdFromTag(tagId);
+                    if (!roomId) {
+                        throw new Error("That seat tag does not resolve to a room yet.");
+                    }
                     router.push(`/professor?roomId=${roomId}` as any);
                 } else {
-                    router.push(`/classroom?roomId=${roomId}&seat=${seat}` as any);
+                    await handleStudentCheckIn(tagId);
                 }
-            } catch (e) {
-                console.log("Could not resolve user identity/profile for scanner route:", e);
-                router.push(`/classroom?roomId=${roomId}&seat=${seat}`);
+                return;
             }
+
+            const legacyMatch = data.match(/wh0ru:\/\/room\/(.+)\/seat\/(.+)/);
+            if (!legacyMatch) {
+                throw new Error("Unsupported QR code format.");
+            }
+
+            const roomId = legacyMatch[1];
+            const seatLabel = legacyMatch[2];
+            if (userType === "professor") {
+                router.push(`/professor?roomId=${roomId}` as any);
+            } else {
+                await handleLegacyPayload(roomId, seatLabel);
+            }
+        } catch (e) {
+            console.log("Could not process scan:", e);
+            setErrorMessage(e instanceof Error ? e.message : "Could not process that QR code.");
+            setScannedData(null);
+        } finally {
+            setIsResolvingScan(false);
         }
     };
 
     const handleTestBypass = async () => {
-        const roomId = "test-room";
-        const seat = "A3";
-        
-        try {
-            const resolvedUid = uid ?? await ensureAnonymousUid();
-            if (!uid) setUid(resolvedUid);
+        setScannedData("test-bypass");
+        setIsResolvingScan(true);
+        setErrorMessage(null);
 
-            const userSnap = await getDoc(doc(db, "users", resolvedUid));
-            const userType = userSnap.exists() ? userSnap.data().userType : "student";
-            
-            if (userType === "professor") {
-                router.push(`/professor?roomId=${roomId}` as any);
-            } else {
-                router.push(`/classroom?roomId=${roomId}&seat=${seat}` as any);
+        try {
+            const { userType } = await resolveUserType();
+            const result = await bootstrapTestRoom(userType === "professor" ? "professor" : "student");
+            if (!result.ok) {
+                console.log("Test room bootstrap failed:", result.code, result.cause);
+                setErrorMessage(result.message);
+                setScannedData(null);
+                return;
             }
+
+            if (result.route === "professor") {
+                router.push(`/professor?roomId=${result.roomId}` as any);
+                return;
+            }
+
+            router.push(
+                `/classroom?roomId=${result.roomId}&seatId=${result.seatId}&seatLabel=${encodeURIComponent(result.seatLabel || "—")}` as any
+            );
         } catch (e) {
-            console.log("Could not resolve user identity/profile for test bypass:", e);
-            router.push(`/classroom?roomId=${roomId}&seat=${seat}`);
+            console.log("Unexpected test room bypass failure:", e);
+            setErrorMessage(e instanceof Error ? e.message : "Could not join the test room.");
+            setScannedData(null);
+        } finally {
+            setIsResolvingScan(false);
         }
     };
 
@@ -214,15 +296,17 @@ export default function QRScannerScreen() {
                                 </Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity
-                                activeOpacity={0.7}
-                                onPress={handleTestBypass}
-                                style={styles.bypassButton}
-                            >
-                                <Text style={styles.bypassButtonText}>
-                                    Skip — Use Test Room
-                                </Text>
-                            </TouchableOpacity>
+                            {canUseTestSupport ? (
+                                <TouchableOpacity
+                                    activeOpacity={0.7}
+                                    onPress={handleTestBypass}
+                                    style={styles.bypassButton}
+                                >
+                                    <Text style={styles.bypassButtonText}>
+                                        Skip — Use Test Room
+                                    </Text>
+                                </TouchableOpacity>
+                            ) : null}
                         </View>
                     )}
 
@@ -240,8 +324,24 @@ export default function QRScannerScreen() {
                         </View>
                     )}
 
+                    {isResolvingScan && (
+                        <View style={styles.resultCard}>
+                            <Text style={styles.resultTitle}>Joining Seat…</Text>
+                            <Text style={styles.resultData}>
+                                Resolving your seat tag and loading the classroom.
+                            </Text>
+                        </View>
+                    )}
+
+                    {errorMessage && !isScanning && !isResolvingScan && (
+                        <View style={styles.errorCard}>
+                            <Text style={styles.errorTitle}>Scan Failed</Text>
+                            <Text style={styles.errorBody}>{errorMessage}</Text>
+                        </View>
+                    )}
+
                     {/* Scanned result (non-matching QR) */}
-                    {scannedData && (
+                    {scannedData && !isResolvingScan && (
                         <View style={{ gap: 16 }}>
                             <View style={styles.resultCard}>
                                 <View style={styles.checkContainer}>
@@ -261,15 +361,17 @@ export default function QRScannerScreen() {
                                 <Text style={styles.primaryButtonText}>Scan Another</Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity
-                                activeOpacity={0.7}
-                                onPress={handleTestBypass}
-                                style={styles.bypassButton}
-                            >
-                                <Text style={styles.bypassButtonText}>
-                                    Enter Test Room Instead
-                                </Text>
-                            </TouchableOpacity>
+                            {canUseTestSupport ? (
+                                <TouchableOpacity
+                                    activeOpacity={0.7}
+                                    onPress={handleTestBypass}
+                                    style={styles.bypassButton}
+                                >
+                                    <Text style={styles.bypassButtonText}>
+                                        Enter Test Room Instead
+                                    </Text>
+                                </TouchableOpacity>
+                            ) : null}
                         </View>
                     )}
                 </View>
@@ -508,5 +610,27 @@ const styles = StyleSheet.create({
         fontFamily: mono,
         color: "#888",
         textAlign: "center",
+    },
+    errorCard: {
+        backgroundColor: "#fff3f0",
+        borderWidth: 1,
+        borderColor: "#f0c2b5",
+        borderRadius: 16,
+        padding: 20,
+    },
+    errorTitle: {
+        fontFamily: serif,
+        fontWeight: "700",
+        color: "#7a2d14",
+        fontSize: 16,
+        marginBottom: 6,
+        textAlign: "center",
+    },
+    errorBody: {
+        fontFamily: mono,
+        fontSize: 12,
+        color: "#9a4a31",
+        textAlign: "center",
+        lineHeight: 18,
     },
 });
