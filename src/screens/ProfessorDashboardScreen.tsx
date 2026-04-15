@@ -20,6 +20,7 @@ import { db } from "../config/firebase";
 import { doc, collection, onSnapshot, writeBatch, getDoc, setDoc, getDocs, deleteDoc } from "firebase/firestore";
 import { ensureAnonymousUid } from "../utils/auth";
 import { endRoomSession as endRoomSessionApi } from "../lib/proximityApi";
+import { StudentProfileSheet } from "../components/StudentProfileSheet";
 import * as ImagePicker from "expo-image-picker";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 
@@ -45,6 +46,7 @@ interface CheckIn {
 
 interface NotificationItem {
     id: string;
+    uid: string;
     type: "handRaise" | "checkIn";
     name: string;
     seat: string;
@@ -433,6 +435,7 @@ export default function ProfessorDashboardScreen() {
     const resolvedRoomId = Array.isArray(roomId) ? roomId[0] : roomId;
     const [checkins, setCheckins] = useState<CheckIn[]>([]);
     const [profileSheetVisible, setProfileSheetVisible] = useState(false);
+    const [selectedStudent, setSelectedStudent] = useState<{ uid: string; seat: string } | null>(null);
 
     // Stamp the room with this professor's uid so students can find the profile.
     useEffect(() => {
@@ -477,6 +480,7 @@ export default function ProfessorDashboardScreen() {
             .filter((c) => c.handRaised)
             .map((c) => ({
                 id: `raise-${c.id}`,
+                uid: c.id,
                 type: "handRaise" as const,
                 name: c.name,
                 seat: c.seat,
@@ -486,6 +490,7 @@ export default function ProfessorDashboardScreen() {
         ...checkins
             .map((c) => ({
                 id: `checkin-${c.id}`,
+                uid: c.id,
                 type: "checkIn" as const,
                 name: c.name,
                 seat: c.seat,
@@ -631,8 +636,10 @@ export default function ProfessorDashboardScreen() {
                         </View>
                     ) : (
                         notifications.map((item, index) => (
-                            <View
+                            <TouchableOpacity
                                 key={item.id}
+                                activeOpacity={0.7}
+                                onPress={() => setSelectedStudent({ uid: item.uid, seat: item.seat })}
                                 style={[
                                     styles.notifItem,
                                     index < notifications.length - 1 && styles.notifItemBorder,
@@ -661,7 +668,8 @@ export default function ProfessorDashboardScreen() {
                                     </Text>
                                 </View>
                                 {!item.isRead && <View style={styles.unreadDot} />}
-                            </View>
+                                <Text style={styles.notifChevron}>›</Text>
+                            </TouchableOpacity>
                         ))
                     )}
                 </View>
@@ -695,6 +703,11 @@ export default function ProfessorDashboardScreen() {
             <ProfessorProfileSheet
                 visible={profileSheetVisible}
                 onClose={() => setProfileSheetVisible(false)}
+            />
+            <StudentProfileSheet
+                studentUid={selectedStudent?.uid ?? null}
+                seatLabel={selectedStudent?.seat}
+                onClose={() => setSelectedStudent(null)}
             />
         </SafeAreaView>
     );
@@ -865,6 +878,11 @@ const styles = StyleSheet.create({
         height: 8,
         borderRadius: 4,
         backgroundColor: "#3b82f6",
+    },
+    notifChevron: {
+        fontSize: 20,
+        color: "#c0c8d4",
+        marginLeft: 4,
     },
     emptyState: {
         padding: 32,

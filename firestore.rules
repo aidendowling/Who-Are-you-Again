@@ -6,22 +6,18 @@ service cloud.firestore {
     }
 
     function currentUser() {
-      if (!isSignedIn()) {
-        return null;
-      }
-      let user = get(/databases/$(database)/documents/users/$(request.auth.uid));
-      return user.data != null ? user : null;
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
     function isProfessor() {
-      let user = currentUser();
-      return user != null && user.data.userType == "professor";
+      return isSignedIn() && currentUser().data.userType == "professor";
     }
 
     match /users/{userId} {
       allow read: if isSignedIn() && (
         request.auth.uid == userId ||
-        get(/databases/$(database)/documents/users/$(userId)).data.userType == "professor"
+        get(/databases/$(database)/documents/users/$(userId)).data.userType == "professor" ||
+        isProfessor()
       );
       allow write: if isSignedIn() && request.auth.uid == userId;
     }
