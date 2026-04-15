@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import {
     Image,
+    Linking,
+    Modal,
+    Platform,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
@@ -22,6 +26,10 @@ import { db } from "../config/firebase";
 import { fetchNearbySeats, leaveSeat } from "../lib/proximityApi";
 import { ensureAnonymousUid } from "../utils/auth";
 
+const NAVY = "#1e3a5f";
+const serif = Platform.select({ ios: "Georgia", android: "serif", default: "serif" });
+const mono  = Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" });
+
 interface ProfileData {
     name: string;
     emoji: string;
@@ -29,6 +37,21 @@ interface ProfileData {
     avatarUri: string | null;
     major: string;
     year: string;
+}
+
+interface ProfessorProfileData {
+    name: string;
+    title: string;
+    department: string;
+    bio: string;
+    officeHours: string;
+    researchInterests: string;
+    email: string;
+    website: string;
+    availability: string;
+    emoji: string;
+    avatarType: string;
+    avatarUri: string | null;
 }
 
 interface ActiveCheckIn {
@@ -61,6 +84,8 @@ export default function ClassroomScreen() {
 
     const [uid, setUid] = useState<string | null>(null);
     const [profile, setProfile] = useState<ProfileData>(DEFAULT_PROFILE);
+    const [professor, setProfessor] = useState<ProfessorProfileData | null>(null);
+    const [professorModalVisible, setProfessorModalVisible] = useState(false);
     const [checkIn, setCheckIn] = useState<ActiveCheckIn | null>(
         seatId || seatLabel
             ? {
@@ -129,7 +154,8 @@ export default function ClassroomScreen() {
             });
         });
 
-        const unsubscribeRoom = onSnapshot(roomRef, (snapshot) => {
+        let lastProfessorUid: string | null = null;
+        const unsubscribeRoom = onSnapshot(roomRef, async (snapshot) => {
             if (!snapshot.exists()) return;
 
             const data = snapshot.data();
@@ -137,6 +163,33 @@ export default function ClassroomScreen() {
                 layoutName: data.layoutName || data.layout?.name,
                 seatCount: data.seatCount,
             });
+
+            const profUid: string | undefined = data.professorUid;
+            if (profUid && profUid !== lastProfessorUid) {
+                lastProfessorUid = profUid;
+                try {
+                    const profSnap = await getDoc(doc(db, "users", profUid));
+                    if (profSnap.exists()) {
+                        const d = profSnap.data();
+                        setProfessor({
+                            name: d.name || "",
+                            title: d.title || "",
+                            department: d.department || "",
+                            bio: d.bio || "",
+                            officeHours: d.officeHours || "",
+                            researchInterests: d.researchInterests || "",
+                            email: d.email || "",
+                            website: d.website || "",
+                            availability: d.availability || "",
+                            emoji: d.emoji || "🧑‍🏫",
+                            avatarType: d.avatarType || "emoji",
+                            avatarUri: d.avatarUri || null,
+                        });
+                    }
+                } catch (e) {
+                    console.log("Could not load professor profile:", e);
+                }
+            }
         });
 
         return () => {
@@ -227,6 +280,43 @@ export default function ClassroomScreen() {
                     </TouchableOpacity>
                 </View>
 
+                {professor && (
+                    <TouchableOpacity
+                        activeOpacity={0.85}
+                        onPress={() => setProfessorModalVisible(true)}
+                        style={styles.professorCard}
+                    >
+                        <Text style={styles.sectionLabel}>Instructor</Text>
+                        <View style={styles.profileRow}>
+                            {professor.avatarType === "photo" && professor.avatarUri ? (
+                                <Image source={{ uri: professor.avatarUri }} style={styles.profilePhoto} />
+                            ) : (
+                                <Text style={styles.profileEmoji}>{professor.emoji}</Text>
+                            )}
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.profileName}>{professor.name}</Text>
+                                {(professor.title || professor.department) ? (
+                                    <Text style={styles.profileDetail}>
+                                        {[professor.title, professor.department].filter(Boolean).join(" · ")}
+                                    </Text>
+                                ) : null}
+                                {professor.researchInterests ? (
+                                    <Text style={styles.professorInterests} numberOfLines={1}>
+                                        {professor.researchInterests}
+                                    </Text>
+                                ) : null}
+                            </View>
+                            <Text style={styles.professorChevron}>›</Text>
+                        </View>
+                        {professor.officeHours ? (
+                            <View style={styles.officeHoursRow}>
+                                <Text style={styles.officeHoursLabel}>Office hours  </Text>
+                                <Text style={styles.officeHoursValue}>{professor.officeHours}</Text>
+                            </View>
+                        ) : null}
+                    </TouchableOpacity>
+                )}
+
                 <View style={styles.profileCard}>
                     <Text style={styles.sectionLabel}>You</Text>
                     <View style={styles.profileRow}>
@@ -306,6 +396,108 @@ export default function ClassroomScreen() {
                     </View>
                 )}
             </ScrollView>
+            {professor && (
+                <Modal
+                    visible={professorModalVisible}
+                    animationType="slide"
+                    transparent
+                    onRequestClose={() => setProfessorModalVisible(false)}
+                >
+                    <Pressable
+                        style={profSheet.backdrop}
+                        onPress={() => setProfessorModalVisible(false)}
+                    />
+                    <View style={profSheet.sheet}>
+                        <View style={profSheet.handle} />
+                        <View style={profSheet.topBar}>
+                            <Text style={profSheet.topBarTitle}>Instructor</Text>
+                            <TouchableOpacity onPress={() => setProfessorModalVisible(false)} hitSlop={12}>
+                                <Text style={profSheet.closeBtn}>Done</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView
+                            contentContainerStyle={profSheet.scrollContent}
+                            showsVerticalScrollIndicator={false}
+                        >
+                            {/* Avatar */}
+                            <View style={profSheet.avatarWrap}>
+                                {professor.avatarType === "photo" && professor.avatarUri ? (
+                                    <Image source={{ uri: professor.avatarUri }} style={profSheet.avatarImage} />
+                                ) : (
+                                    <View style={profSheet.avatarBg}>
+                                        <Text style={profSheet.avatarEmoji}>{professor.emoji}</Text>
+                                    </View>
+                                )}
+                            </View>
+
+                            <Text style={profSheet.name}>{professor.name}</Text>
+                            {(professor.title || professor.department) ? (
+                                <Text style={profSheet.titleDept}>
+                                    {[professor.title, professor.department].filter(Boolean).join(" · ")}
+                                </Text>
+                            ) : null}
+
+                            {/* Info sections */}
+                            {professor.bio ? (
+                                <View style={profSheet.infoCard}>
+                                    <Text style={profSheet.infoLabel}>About</Text>
+                                    <Text style={profSheet.infoBody}>{professor.bio}</Text>
+                                </View>
+                            ) : null}
+
+                            {professor.officeHours ? (
+                                <View style={profSheet.infoCard}>
+                                    <Text style={profSheet.infoLabel}>Office Hours</Text>
+                                    <Text style={profSheet.infoBody}>{professor.officeHours}</Text>
+                                </View>
+                            ) : null}
+
+                            {professor.researchInterests ? (
+                                <View style={profSheet.infoCard}>
+                                    <Text style={profSheet.infoLabel}>Research / Teaching Interests</Text>
+                                    <Text style={profSheet.infoBody}>{professor.researchInterests}</Text>
+                                </View>
+                            ) : null}
+
+                            {/* Link chips */}
+                            {(professor.email || professor.website || professor.availability) ? (
+                                <View style={profSheet.linksSection}>
+                                    <Text style={profSheet.infoLabel}>Links</Text>
+                                    <View style={profSheet.linksRow}>
+                                        {professor.email ? (
+                                            <TouchableOpacity
+                                                style={profSheet.chip}
+                                                onPress={() => Linking.openURL(`mailto:${professor.email}`)}
+                                                activeOpacity={0.7}
+                                            >
+                                                <Text style={profSheet.chipText}>✉ Email</Text>
+                                            </TouchableOpacity>
+                                        ) : null}
+                                        {professor.website ? (
+                                            <TouchableOpacity
+                                                style={profSheet.chip}
+                                                onPress={() => Linking.openURL(professor.website)}
+                                                activeOpacity={0.7}
+                                            >
+                                                <Text style={profSheet.chipText}>🌐 Website</Text>
+                                            </TouchableOpacity>
+                                        ) : null}
+                                        {professor.availability ? (
+                                            <TouchableOpacity
+                                                style={profSheet.chip}
+                                                onPress={() => Linking.openURL(professor.availability)}
+                                                activeOpacity={0.7}
+                                            >
+                                                <Text style={profSheet.chipText}>📅 Availability</Text>
+                                            </TouchableOpacity>
+                                        ) : null}
+                                    </View>
+                                </View>
+                            ) : null}
+                        </ScrollView>
+                    </View>
+                </Modal>
+            )}
         </SafeAreaView>
     );
 }
@@ -612,5 +804,183 @@ const styles = StyleSheet.create({
     },
     buttonDisabled: {
         opacity: 0.55,
+    },
+
+    // Professor card
+    professorCard: {
+        backgroundColor: "#f0f4fa",
+        borderRadius: 20,
+        padding: 18,
+        borderWidth: 1,
+        borderColor: "#d0daea",
+        marginBottom: 16,
+    },
+    professorInterests: {
+        fontSize: 12,
+        color: "#7a8ca8",
+        marginTop: 2,
+    },
+    professorChevron: {
+        fontSize: 24,
+        color: "#9aacc4",
+        marginLeft: 4,
+    },
+    officeHoursRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginTop: 12,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: "#d0daea",
+    },
+    officeHoursLabel: {
+        fontSize: 11,
+        fontWeight: "700",
+        color: "#6d84a0",
+        textTransform: "uppercase",
+        letterSpacing: 0.8,
+    },
+    officeHoursValue: {
+        flex: 1,
+        fontSize: 13,
+        color: NAVY,
+        fontWeight: "600",
+    },
+});
+
+// ─── Professor profile sheet (read-only modal) ────────────────────────────────
+
+const profSheet = StyleSheet.create({
+    backdrop: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: "rgba(11,18,32,0.5)",
+    },
+    sheet: {
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: "#fafaf8",
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        maxHeight: "88%",
+        overflow: "hidden",
+    },
+    handle: {
+        width: 40,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: "#d4d7de",
+        alignSelf: "center",
+        marginTop: 10,
+        marginBottom: 2,
+    },
+    topBar: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: "#eaecf0",
+    },
+    topBarTitle: {
+        fontSize: 16,
+        fontWeight: "700",
+        fontFamily: serif,
+        color: "#111",
+    },
+    closeBtn: {
+        fontSize: 16,
+        fontWeight: "700",
+        color: NAVY,
+        fontFamily: mono,
+    },
+    scrollContent: {
+        paddingHorizontal: 24,
+        paddingTop: 24,
+        paddingBottom: 48,
+        alignItems: "center",
+    },
+    avatarWrap: {
+        marginBottom: 16,
+    },
+    avatarImage: {
+        width: 96,
+        height: 96,
+        borderRadius: 48,
+    },
+    avatarBg: {
+        width: 96,
+        height: 96,
+        borderRadius: 48,
+        backgroundColor: "#e8edf6",
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    avatarEmoji: {
+        fontSize: 46,
+    },
+    name: {
+        fontSize: 28,
+        fontWeight: "900",
+        fontFamily: serif,
+        color: "#111",
+        textAlign: "center",
+        marginBottom: 6,
+    },
+    titleDept: {
+        fontSize: 15,
+        color: "#5f6876",
+        fontFamily: mono,
+        textAlign: "center",
+        marginBottom: 24,
+    },
+    infoCard: {
+        width: "100%",
+        backgroundColor: "#fff",
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: "#e4e7ed",
+        padding: 16,
+        marginBottom: 12,
+        gap: 6,
+    },
+    infoLabel: {
+        fontSize: 11,
+        textTransform: "uppercase",
+        letterSpacing: 1.2,
+        color: "#8b93a2",
+        fontWeight: "700",
+        fontFamily: mono,
+    },
+    infoBody: {
+        fontSize: 15,
+        color: "#1f2937",
+        lineHeight: 22,
+        fontFamily: serif,
+    },
+    linksSection: {
+        width: "100%",
+        marginTop: 4,
+        gap: 12,
+    },
+    linksRow: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 10,
+        marginTop: 8,
+    },
+    chip: {
+        backgroundColor: NAVY,
+        borderRadius: 20,
+        paddingHorizontal: 18,
+        paddingVertical: 10,
+    },
+    chipText: {
+        fontSize: 14,
+        fontFamily: mono,
+        fontWeight: "600",
+        color: "#fff",
     },
 });

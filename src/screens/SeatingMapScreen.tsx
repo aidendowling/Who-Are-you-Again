@@ -15,6 +15,7 @@ import {
     Dimensions,
     FlatList,
 } from "react-native";
+import { StudentProfileSheet } from "../components/StudentProfileSheet";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { db } from "../config/firebase";
@@ -86,12 +87,14 @@ function SeatGrid({
     occupiedMap,
     seatSize,
     fontSize,
+    onSeatPress,
 }: {
     rows: number[];
     cols: string[];
     occupiedMap: Map<string, CheckIn>;
     seatSize: number;
     fontSize: number;
+    onSeatPress?: (checkin: CheckIn) => void;
 }) {
     const radius = Math.round(seatSize * 0.18);
     return (
@@ -106,17 +109,15 @@ function SeatGrid({
                             : checkin.handRaised
                             ? "hand-raised"
                             : "occupied";
-                        return (
-                            <View
-                                key={seatId}
-                                style={[
-                                    seatSt.seat,
-                                    { width: seatSize, height: seatSize, borderRadius: radius },
-                                    status === "occupied"    && seatSt.occupied,
-                                    status === "hand-raised" && seatSt.handRaised,
-                                    status === "available"   && seatSt.available,
-                                ]}
-                            >
+                        const seatStyle = [
+                            seatSt.seat,
+                            { width: seatSize, height: seatSize, borderRadius: radius },
+                            status === "occupied"    && seatSt.occupied,
+                            status === "hand-raised" && seatSt.handRaised,
+                            status === "available"   && seatSt.available,
+                        ];
+                        const inner = (
+                            <>
                                 <Text
                                     style={[
                                         seatSt.label,
@@ -130,6 +131,23 @@ function SeatGrid({
                                 {status === "hand-raised" && (
                                     <View style={seatSt.raisedBadge} />
                                 )}
+                            </>
+                        );
+                        if (checkin && onSeatPress) {
+                            return (
+                                <TouchableOpacity
+                                    key={seatId}
+                                    style={seatStyle}
+                                    onPress={() => onSeatPress(checkin)}
+                                    activeOpacity={0.72}
+                                >
+                                    {inner}
+                                </TouchableOpacity>
+                            );
+                        }
+                        return (
+                            <View key={seatId} style={seatStyle}>
+                                {inner}
                             </View>
                         );
                     })}
@@ -522,6 +540,7 @@ export default function SeatingMapScreen() {
     const [zoomIdx, setZoomIdx]         = useState(1);
     const [editorOpen, setEditorOpen]   = useState(false);
     const [layout, setLayout]           = useState<LayoutConfig>(DEFAULT_LAYOUT);
+    const [selectedStudent, setSelectedStudent] = useState<{ uid: string; seat: string } | null>(null);
 
     const zoom     = ZOOM_STEPS[zoomIdx];
     const seatSize = Math.round(BASE_SEAT * zoom);
@@ -739,6 +758,7 @@ export default function SeatingMapScreen() {
                                                 occupiedMap={occupiedMap}
                                                 seatSize={seatSize}
                                                 fontSize={fontSize}
+                                                onSeatPress={(c) => setSelectedStudent({ uid: c.id, seat: c.seat })}
                                             />
                                         </View>
                                     ))}
@@ -772,8 +792,10 @@ export default function SeatingMapScreen() {
                         </View>
                     ) : (
                         handRaisers.map((c, i) => (
-                            <View
+                            <TouchableOpacity
                                 key={c.id}
+                                activeOpacity={0.7}
+                                onPress={() => setSelectedStudent({ uid: c.id, seat: c.seat })}
                                 style={[
                                     styles.handRaiseRow,
                                     i < handRaisers.length - 1 && styles.handRaiseRowBorder,
@@ -796,10 +818,11 @@ export default function SeatingMapScreen() {
                                     onPress={() => clearOne(c.id)}
                                     activeOpacity={0.7}
                                     style={styles.checkBtn}
+                                    hitSlop={8}
                                 >
                                     <Text style={styles.checkMark}>✓</Text>
                                 </TouchableOpacity>
-                            </View>
+                            </TouchableOpacity>
                         ))
                     )}
                 </View>
@@ -812,6 +835,12 @@ export default function SeatingMapScreen() {
                 roomId={roomId ?? ""}
                 onApply={setLayout}
                 onClose={() => setEditorOpen(false)}
+            />
+
+            <StudentProfileSheet
+                studentUid={selectedStudent?.uid ?? null}
+                seatLabel={selectedStudent?.seat}
+                onClose={() => setSelectedStudent(null)}
             />
         </SafeAreaView>
     );
