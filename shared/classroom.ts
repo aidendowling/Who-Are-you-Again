@@ -20,9 +20,9 @@ export interface RoomSeat {
 
 export const DEFAULT_LAYOUT: LayoutConfig = {
     name: "New Layout",
-    rows: 8,
-    seatsPerSection: 6,
-    sections: 2,
+    rows: 12,
+    seatsPerSection: 4,
+    sections: 3,
 };
 
 export const AISLE_GAP = 1;
