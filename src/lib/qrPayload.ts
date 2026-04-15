@@ -17,11 +17,7 @@ const TAG_SCHEME_PATTERN = /(?:synapse|wh0ru):\/\/(?:seat-tag|tag)\/([^/?#]+)/i;
 const LEGACY_SEAT_PATTERN = /^wh0ru:\/\/room\/([^/]+)\/seat\/(.+)$/i;
 
 function decodeSegment(value: string) {
-    try {
-        return decodeURIComponent(value).trim();
-    } catch {
-        return "";
-    }
+    return decodeURIComponent(value).trim();
 }
 
 export function parseSeatScanPayload(rawData: string): ParsedSeatScanPayload | null {

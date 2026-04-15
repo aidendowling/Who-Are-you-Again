@@ -9,49 +9,36 @@ export async function ensureAnonymousUid(): Promise<string> {
     }
 
     if (!uidPromise) {
-        uidPromise = new Promise<string>((resolve, reject) => {
-            let settled = false;
-            let signingIn = false;
-
-            const unsubscribe = onAuthStateChanged(
-                auth,
-                async (user) => {
-                    if (settled) return;
-
-                    if (user?.uid) {
-                        settled = true;
-                        unsubscribe();
-                        resolve(user.uid);
-                        return;
-                    }
-
-                    if (signingIn) return;
-                    signingIn = true;
-
-                    try {
-                        const credential = await signInAnonymously(auth);
-                        if (settled) return;
-
-                        settled = true;
-                        unsubscribe();
-                        resolve(credential.user.uid);
-                    } catch (error) {
-                        settled = true;
-                        unsubscribe();
-                        console.log("Anonymous auth sign-in failed:", error);
-                        reject(error);
-                    }
-                },
-                (error) => {
-                    if (settled) return;
-
-                    settled = true;
-                    unsubscribe();
-                    console.log("Anonymous auth state listener failed:", error);
-                    reject(error);
+        uidPromise = (async () => {
+            try {
+                const credential = await signInAnonymously(auth);
+                return credential.user.uid;
+            } catch {
+                // A concurrent request may have already completed sign-in.
+                if (auth.currentUser?.uid) {
+                    return auth.currentUser.uid;
                 }
-            );
-        });
+
+                // Fallback to auth state listener for edge cases where sign-in succeeds
+                // but the credential promise rejects due to transient webview/storage issues.
+                const fallbackUid = await new Promise<string>((resolve, reject) => {
+                    const unsubscribe = onAuthStateChanged(
+                        auth,
+                        (user) => {
+                            if (!user?.uid) return;
+                            unsubscribe();
+                            resolve(user.uid);
+                        },
+                        (error) => {
+                            unsubscribe();
+                            reject(error);
+                        }
+                    );
+                });
+
+                return fallbackUid;
+            }
+        })();
     }
 
     try {

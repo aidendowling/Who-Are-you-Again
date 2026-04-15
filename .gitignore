@@ -14,6 +14,7 @@ android/
 web-build/
 .env
 .env.local
+.env.production
 firestore-debug.log
 .firebase/
 generated/

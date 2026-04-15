@@ -29,7 +29,7 @@ test("buildSeatQrManifest derives row-major seat entries with stable QR URLs", (
     assert.equal(manifest.length, 8);
     assert.deepEqual(
         manifest.map((entry) => entry.label),
-        ["1A", "1B", "1D", "1E", "2A", "2B", "2D", "2E"]
+        ["1A", "1B", "1C", "1D", "2A", "2B", "2C", "2D"]
     );
     assert.equal(manifest[0].qrUrl, "https://app.whoru.edu/checkin?t=qr-qr-room-r0c0");
     assert.equal(manifest[0].fileName, "1A-r0c0.svg");

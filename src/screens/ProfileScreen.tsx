@@ -51,6 +51,7 @@ export default function ProfileScreen() {
     const [isSaving, setIsSaving] = useState(false);
     const [isLoaded, setIsLoaded] = useState(false);
     const [uid, setUid] = useState<string | null>(null);
+    const [identityError, setIdentityError] = useState<string | null>(null);
 
     // Load existing profile
     useEffect(() => {
@@ -58,6 +59,7 @@ export default function ProfileScreen() {
     }, []);
 
     const loadProfile = async () => {
+        setIdentityError(null);
         try {
             const resolvedUid = await ensureAnonymousUid();
             setUid(resolvedUid);
@@ -86,6 +88,10 @@ export default function ProfileScreen() {
             }
         } catch (e) {
             console.log("Could not initialize auth or load profile:", e);
+            setUid(null);
+            setIdentityError(
+                "Could not initialize your session. Check that Firebase Anonymous Auth is enabled for this project, then tap retry."
+            );
         }
         setIsLoaded(true);
     };
@@ -161,13 +167,23 @@ export default function ProfileScreen() {
                 profileData.funFact = funFact.trim();
             }
 
-            await setDoc(doc(db, "users", uid), profileData);
+            const saveTimeoutMs = 12000;
+            await Promise.race([
+                setDoc(doc(db, "users", uid), profileData),
+                new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error("save-timeout")), saveTimeoutMs);
+                }),
+            ]);
+            router.push("/scanner");
         } catch (e) {
             console.log("Could not save profile:", e);
+            Alert.alert(
+                "Could not save profile",
+                "The request timed out or failed. Please check your connection and Firebase Auth/Firestore settings, then try again."
+            );
+        } finally {
+            setIsSaving(false);
         }
-
-        setIsSaving(false);
-        router.push("/scanner");
     };
 
     if (!isLoaded) {
@@ -498,6 +514,18 @@ export default function ProfileScreen() {
 
             {/* Fixed Footer Button */}
             <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + 8, 28) }]}>
+                {identityError ? (
+                    <View style={styles.identityErrorContainer}>
+                        <Text style={styles.identityErrorText}>{identityError}</Text>
+                        <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={loadProfile}
+                            style={styles.retryButton}
+                        >
+                            <Text style={styles.retryButtonText}>Retry Session Setup</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : null}
                 <TouchableOpacity
                     activeOpacity={0.8}
                     onPress={saveAndContinue}
@@ -813,5 +841,35 @@ const styles = StyleSheet.create({
         fontFamily: mono,
         fontWeight: "700",
         textAlign: "center",
+    },
+    identityErrorContainer: {
+        backgroundColor: "#fff3f0",
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: "#f0c2b5",
+        padding: 12,
+        marginBottom: 12,
+        gap: 8,
+    },
+    identityErrorText: {
+        color: "#a4442d",
+        fontSize: 13,
+        fontFamily: mono,
+        lineHeight: 18,
+    },
+    retryButton: {
+        alignSelf: "flex-start",
+        backgroundColor: "#fff",
+        borderWidth: 1,
+        borderColor: "#d6d9df",
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+    },
+    retryButtonText: {
+        color: NAVY,
+        fontSize: 12,
+        fontFamily: mono,
+        fontWeight: "600",
     },
 });

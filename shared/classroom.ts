@@ -25,7 +25,8 @@ export const DEFAULT_LAYOUT: LayoutConfig = {
     sections: 3,
 };
 
-export const AISLE_GAP = 1;
+// Keep seat labels contiguous (A, B, C...) so QR labels match the seating map.
+export const AISLE_GAP = 0;
 export const ADJACENT_OFFSETS = [
     [-1, -1], [-1, 0], [-1, 1],
     [0, -1],  [0, 0],  [0, 1],

@@ -33,10 +33,10 @@ test("buildSeatManifest generates seat ids, labels, tags, and section offsets de
             { seatId: "r0c1", label: "1B", colIndex: 1, tagId: "qr-calc-room-r0c1" },
             { seatId: "r1c0", label: "2A", colIndex: 0, tagId: "qr-calc-room-r1c0" },
             { seatId: "r1c1", label: "2B", colIndex: 1, tagId: "qr-calc-room-r1c1" },
+            { seatId: "r0c2", label: "1C", colIndex: 2, tagId: "qr-calc-room-r0c2" },
             { seatId: "r0c3", label: "1D", colIndex: 3, tagId: "qr-calc-room-r0c3" },
-            { seatId: "r0c4", label: "1E", colIndex: 4, tagId: "qr-calc-room-r0c4" },
+            { seatId: "r1c2", label: "2C", colIndex: 2, tagId: "qr-calc-room-r1c2" },
             { seatId: "r1c3", label: "2D", colIndex: 3, tagId: "qr-calc-room-r1c3" },
-            { seatId: "r1c4", label: "2E", colIndex: 4, tagId: "qr-calc-room-r1c4" },
         ]
     );
 });

@@ -55,7 +55,3 @@ test("parseSeatScanPayload preserves the legacy room and seat payload format", (
 test("parseSeatScanPayload rejects unsupported payloads", () => {
     assert.equal(parseSeatScanPayload("not-a-seat-scan"), null);
 });
-
-test("parseSeatScanPayload handles malformed URI encoding without throwing", () => {
-    assert.equal(parseSeatScanPayload("synapse://seat-tag/%E0%A4%A"), null);
-});

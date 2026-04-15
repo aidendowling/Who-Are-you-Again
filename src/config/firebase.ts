@@ -1,6 +1,13 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
-import { connectAuthEmulator, getAuth, initializeAuth } from "firebase/auth";
+import { connectFirestoreEmulator, getFirestore, initializeFirestore } from "firebase/firestore";
+import {
+    browserLocalPersistence,
+    connectAuthEmulator,
+    getAuth,
+    indexedDBLocalPersistence,
+    inMemoryPersistence,
+    initializeAuth,
+} from "firebase/auth";
 import { connectFunctionsEmulator, getFunctions } from "firebase/functions";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
@@ -36,7 +43,19 @@ function shouldUseFirebaseEmulators() {
 
 const createAuth = () => {
     if (Platform.OS === "web") {
-        return getAuth(app);
+        try {
+            return initializeAuth(app, {
+                // iOS webviews can fail IndexedDB/localStorage initialization.
+                persistence: [
+                    indexedDBLocalPersistence,
+                    browserLocalPersistence,
+                    inMemoryPersistence,
+                ],
+            });
+        } catch {
+            // Falls back when auth was already initialized (e.g. fast refresh).
+            return getAuth(app);
+        }
     }
 
     try {
@@ -49,7 +68,23 @@ const createAuth = () => {
     }
 };
 
-export const db = getFirestore(app);
+const createDb = () => {
+    if (Platform.OS !== "web") {
+        return getFirestore(app);
+    }
+
+    try {
+        return initializeFirestore(app, {
+            // Helps Safari/iOS networks where WebChannel streaming can stall.
+            experimentalAutoDetectLongPolling: true,
+        });
+    } catch {
+        // Falls back when firestore was already initialized.
+        return getFirestore(app);
+    }
+};
+
+export const db = createDb();
 export const auth = createAuth();
 export const functions = getFunctions(app);
 

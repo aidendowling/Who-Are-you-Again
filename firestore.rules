@@ -5,17 +5,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function currentUser() {
-      if (!isSignedIn()) {
-        return null;
-      }
-      let user = get(/databases/$(database)/documents/users/$(request.auth.uid));
-      return user.data != null ? user : null;
-    }
-
     function isProfessor() {
-      let user = currentUser();
-      return user != null && user.data.userType == "professor";
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == "professor";
     }
 
     match /users/{userId} {

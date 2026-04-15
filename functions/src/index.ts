@@ -110,21 +110,6 @@ async function loadUserProfile(uid: string) {
     return userSnap.exists ? userSnap.data() ?? {} : {};
 }
 
-async function requireProfessorRole(uid: string) {
-    const profile = await loadUserProfile(uid);
-    if (String(profile.userType || "") !== "professor") {
-        throw new HttpsError("permission-denied", "Only professors can perform this action.");
-    }
-}
-
-async function deleteDocRefsInChunks(refs: FirebaseFirestore.DocumentReference[], chunkSize = 450) {
-    for (let index = 0; index < refs.length; index += chunkSize) {
-        const batch = db.batch();
-        refs.slice(index, index + chunkSize).forEach((ref) => batch.delete(ref));
-        await batch.commit();
-    }
-}
-
 async function loadActiveCheckIns(uid: string) {
     const snaps = await db
         .collectionGroup("checkins")
@@ -348,25 +333,6 @@ export const syncRoomManifest = onCall({ cors: true }, async (request) => {
     }
 
     await syncRoomSeatManifest(roomId);
-    return { success: true };
-});
-
-export const endRoomSession = onCall({ cors: true }, async (request) => {
-    const uid = requireAuth(request.auth);
-    const roomId = String(request.data?.roomId || "").trim();
-
-    if (!roomId) {
-        throw new HttpsError("invalid-argument", "roomId is required.");
-    }
-
-    await requireProfessorRole(uid);
-
-    const checkInSnaps = await db.collection(`rooms/${roomId}/checkins`).get();
-    const occupancySnaps = await db.collection(`rooms/${roomId}/occupancy`).get();
-    await deleteDocRefsInChunks([
-        ...checkInSnaps.docs.map((snap) => snap.ref),
-        ...occupancySnaps.docs.map((snap) => snap.ref),
-    ]);
     return { success: true };
 });
 
