@@ -9,8 +9,8 @@
     "web": "npx expo start --web",
     "typecheck": "tsc --noEmit && npm --prefix functions run lint",
     "test": "npm run test:domain && npm run test:app",
-    "test:domain": "node --import tsx --test --test-concurrency=1 test/domain/**/*.test.ts",
-    "test:firebase": "npm --prefix functions run build && firebase emulators:exec --project demo-wh0ru-aga1n --only auth,firestore,functions \"node --import tsx --test --test-concurrency=1 test/firebase/**/*.test.ts\"",
+    "test:domain": "node --import tsx --test --test-concurrency=1 test/domain/classroomDomain.test.ts",
+    "test:firebase": "npm --prefix functions run build && firebase emulators:exec --project demo-wh0ru-aga1n --only auth,firestore,functions \"node --import tsx --test --test-concurrency=1 test/firebase/classroomFlows.test.ts\"",
     "test:app": "jest --config jest.config.app.js --runInBand",
     "test:ci": "npm run typecheck && npm run test:domain && npm run test:firebase && npm run test:app",
     "emulators": "firebase emulators:start --project demo-wh0ru-aga1n --only auth,firestore,functions"
