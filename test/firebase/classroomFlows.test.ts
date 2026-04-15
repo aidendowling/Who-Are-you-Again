@@ -50,6 +50,22 @@ test("anonymous student without a profile can enter the seeded test room determi
     assert.equal(checkIn?.seatLabel, "1A");
   });
 
+test("checkInToSeat auto-seeds manifest from qr tag in an empty room", async () => {
+    const student = await trackClient(createStudentClient({ label: "auto-seed-student" }));
+    const room = createRoomFixture({ roomId: "auto-seed-room" });
+    const seat = createCheckInFixture(room, "1A");
+
+    const result = await callCheckInToSeat(student, seat.tagId);
+
+    assert.equal(result.data.roomId, room.roomId);
+    assert.equal(result.data.seatLabel, "1A");
+
+    const seatTag = await readDoc(student, "rooms", room.roomId, "seatTags", seat.tagId);
+    const occupancy = await readDoc(student, "rooms", room.roomId, "occupancy", seat.seatId);
+    assert.equal(seatTag?.roomId, room.roomId);
+    assert.equal(occupancy?.uid, student.uid);
+});
+
 test("syncRoomManifest writes room metadata, seats, and seat tags from the shared layout model", async () => {
     const professor = await trackClient(createProfessorClient({ label: "layout-professor" }));
     const room = createRoomFixture({
@@ -97,7 +113,12 @@ test("checkInToSeat creates occupancy, moves active seats, and blocks collisions
     await callCheckInToSeat(studentA, seatA.tagId);
 
     const firstOccupancy = await readDoc(professor, "rooms", room.roomId, "occupancy", seatA.seatId);
+    const firstCheckIn = await readDoc(studentA, "rooms", room.roomId, "checkins", studentA.uid);
     assert.equal(firstOccupancy?.preview?.firstName, "Alice");
+    assert.equal(firstCheckIn?.name, "Alice Example");
+    assert.equal(firstCheckIn?.major, "CS");
+    assert.equal(firstCheckIn?.year, "Junior");
+    assert.equal(firstCheckIn?.emoji, "🧪");
 
     await callCheckInToSeat(studentA, seatB.tagId);
 
