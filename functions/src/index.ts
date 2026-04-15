@@ -31,6 +31,12 @@ interface CheckInRecord {
     seatId: string;
     seat?: string;
     seatLabel?: string;
+    name?: string;
+    year?: string;
+    major?: string;
+    avatarType?: string;
+    avatarUri?: string | null;
+    emoji?: string;
     status?: "active" | "ended";
     handRaised?: boolean;
 }
@@ -83,9 +89,40 @@ async function loadSeatTag(tagId: string) {
     return tagSnap.docs[0].data() as SeatTagRecord;
 }
 
+function tryExtractRoomIdFromTag(tagId: string) {
+    const marker = "-r";
+    const seatBoundary = tagId.lastIndexOf(marker);
+    if (!tagId.startsWith("qr-") || seatBoundary <= 3) {
+        return null;
+    }
+
+    const roomId = tagId.slice(3, seatBoundary);
+    const seatId = tagId.slice(seatBoundary + 1);
+    if (!roomId || !/^r\d+c\d+$/.test(seatId)) {
+        return null;
+    }
+
+    return roomId;
+}
+
 async function loadUserProfile(uid: string) {
     const userSnap = await db.doc(`users/${uid}`).get();
     return userSnap.exists ? userSnap.data() ?? {} : {};
+}
+
+async function requireProfessorRole(uid: string) {
+    const profile = await loadUserProfile(uid);
+    if (String(profile.userType || "") !== "professor") {
+        throw new HttpsError("permission-denied", "Only professors can perform this action.");
+    }
+}
+
+async function deleteDocRefsInChunks(refs: FirebaseFirestore.DocumentReference[], chunkSize = 450) {
+    for (let index = 0; index < refs.length; index += chunkSize) {
+        const batch = db.batch();
+        refs.slice(index, index + chunkSize).forEach((ref) => batch.delete(ref));
+        await batch.commit();
+    }
 }
 
 async function loadActiveCheckIns(uid: string) {
@@ -191,7 +228,23 @@ export const checkInToSeat = onCall({ cors: true }, async (request) => {
         throw new HttpsError("invalid-argument", "tagId is required.");
     }
 
-    const seatTag = await loadSeatTag(tagId);
+    let seatTag: SeatTagRecord;
+    try {
+        seatTag = await loadSeatTag(tagId);
+    } catch (error) {
+        if (!(error instanceof HttpsError) || error.code !== "not-found") {
+            throw error;
+        }
+
+        const fallbackRoomId = tryExtractRoomIdFromTag(tagId);
+        if (!fallbackRoomId) {
+            throw error;
+        }
+
+        await syncRoomSeatManifest(fallbackRoomId);
+        seatTag = await loadSeatTag(tagId);
+    }
+
     if (!seatTag.isActive && seatTag.isActive !== undefined) {
         throw new HttpsError("failed-precondition", "Seat tag is inactive.");
     }
@@ -208,7 +261,13 @@ export const checkInToSeat = onCall({ cors: true }, async (request) => {
     }
 
     const profile = await loadUserProfile(uid);
-    const firstName = String(profile.name || "Student").trim().split(/\s+/)[0] || "Student";
+    const name = String(profile.name || "Student").trim() || "Student";
+    const firstName = name.split(/\s+/)[0] || "Student";
+    const year = String(profile.year || "");
+    const major = String(profile.major || "");
+    const avatarType = String(profile.avatarType || "emoji");
+    const avatarUri = (profile.avatarUri as string | null) ?? null;
+    const emoji = String(profile.emoji || "😊");
     const checkedInAt = new Date().toISOString();
     const activeCheckIns = await loadActiveCheckIns(uid);
 
@@ -233,6 +292,8 @@ export const checkInToSeat = onCall({ cors: true }, async (request) => {
             transaction.delete(checkInSnap.ref);
         }
 
+        // Mirror only the room-scoped display fields professor views need so the UI
+        // can render names and avatars without fan-out reads back into /users.
         transaction.set(
             getCheckInDoc(seatTag.roomId, uid),
             {
@@ -241,6 +302,12 @@ export const checkInToSeat = onCall({ cors: true }, async (request) => {
                 seatId: seatTag.seatId,
                 seat: seat.label,
                 seatLabel: seat.label,
+                name,
+                year,
+                major,
+                avatarType,
+                avatarUri,
+                emoji,
                 handRaised: false,
                 checkedInAt,
                 status: "active",
@@ -256,11 +323,11 @@ export const checkInToSeat = onCall({ cors: true }, async (request) => {
             checkedInAt,
             preview: {
                 firstName,
-                year: String(profile.year || ""),
-                major: String(profile.major || ""),
-                avatarType: String(profile.avatarType || "emoji"),
-                avatarUri: (profile.avatarUri as string | null) ?? null,
-                emoji: String(profile.emoji || "😊"),
+                year,
+                major,
+                avatarType,
+                avatarUri,
+                emoji,
             },
         });
     });
@@ -281,6 +348,25 @@ export const syncRoomManifest = onCall({ cors: true }, async (request) => {
     }
 
     await syncRoomSeatManifest(roomId);
+    return { success: true };
+});
+
+export const endRoomSession = onCall({ cors: true }, async (request) => {
+    const uid = requireAuth(request.auth);
+    const roomId = String(request.data?.roomId || "").trim();
+
+    if (!roomId) {
+        throw new HttpsError("invalid-argument", "roomId is required.");
+    }
+
+    await requireProfessorRole(uid);
+
+    const checkInSnaps = await db.collection(`rooms/${roomId}/checkins`).get();
+    const occupancySnaps = await db.collection(`rooms/${roomId}/occupancy`).get();
+    await deleteDocRefsInChunks([
+        ...checkInSnaps.docs.map((snap) => snap.ref),
+        ...occupancySnaps.docs.map((snap) => snap.ref),
+    ]);
     return { success: true };
 });
 

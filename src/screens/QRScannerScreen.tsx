@@ -21,6 +21,7 @@ import Animated, {
     Easing,
 } from "react-native-reanimated";
 import { checkInToSeat, syncRoomManifest } from "../lib/proximityApi";
+import { parseSeatScanPayload } from "../lib/qrPayload";
 import { buildSeatManifest, DEFAULT_LAYOUT, resolveSeatByLabel } from "../lib/seating";
 import { bootstrapTestRoom, isTestSupportEnabled } from "../lib/testSupport";
 
@@ -185,10 +186,20 @@ export default function QRScannerScreen() {
 
         try {
             const { userType } = await resolveUserType();
-            const tagMatch = data.match(/(?:synapse|wh0ru):\/\/(?:seat-tag|tag)\/([^/?#]+)/i);
+            const payload = parseSeatScanPayload(data);
 
-            if (tagMatch) {
-                const tagId = decodeURIComponent(tagMatch[1]);
+            if (payload?.kind === "professor-room") {
+                if (userType !== "professor") {
+                    throw new Error("This QR code is for professor dashboard access only.");
+                }
+
+                await syncRoomManifest(payload.roomId);
+                router.push(`/professor?roomId=${payload.roomId}` as any);
+                return;
+            }
+
+            if (payload?.kind === "tag") {
+                const tagId = payload.tagId;
                 if (userType === "professor") {
                     const roomId = await resolveRoomIdFromTag(tagId);
                     if (!roomId) {
@@ -201,13 +212,11 @@ export default function QRScannerScreen() {
                 return;
             }
 
-            const legacyMatch = data.match(/wh0ru:\/\/room\/(.+)\/seat\/(.+)/);
-            if (!legacyMatch) {
+            if (!payload || payload.kind !== "legacy-seat") {
                 throw new Error("Unsupported QR code format.");
             }
 
-            const roomId = legacyMatch[1];
-            const seatLabel = legacyMatch[2];
+            const { roomId, seatLabel } = payload;
             if (userType === "professor") {
                 router.push(`/professor?roomId=${roomId}` as any);
             } else {

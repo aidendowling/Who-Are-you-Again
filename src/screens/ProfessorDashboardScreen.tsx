@@ -19,7 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { db } from "../config/firebase";
 import { doc, collection, onSnapshot, writeBatch, getDoc, setDoc, getDocs, deleteDoc } from "firebase/firestore";
 import { ensureAnonymousUid } from "../utils/auth";
-import { clearRoomOccupancy } from "../lib/seatManifest";
+import { endRoomSession as endRoomSessionApi } from "../lib/proximityApi";
 import * as ImagePicker from "expo-image-picker";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 
@@ -430,6 +430,7 @@ function ProfessorProfileSheet({
 export default function ProfessorDashboardScreen() {
     const router = useRouter();
     const { roomId } = useLocalSearchParams<{ roomId: string }>();
+    const resolvedRoomId = Array.isArray(roomId) ? roomId[0] : roomId;
     const [checkins, setCheckins] = useState<CheckIn[]>([]);
     const [profileSheetVisible, setProfileSheetVisible] = useState(false);
 
@@ -448,9 +449,9 @@ export default function ProfessorDashboardScreen() {
     }, [roomId]);
 
     useEffect(() => {
-        if (!roomId) return;
+        if (!resolvedRoomId) return;
 
-        const roomRef = collection(db, "rooms", roomId, "checkins");
+        const roomRef = collection(db, "rooms", resolvedRoomId, "checkins");
         const unsubscribe = onSnapshot(roomRef, (snapshot) => {
             const list: CheckIn[] = [];
             snapshot.forEach((d) => {
@@ -469,7 +470,7 @@ export default function ProfessorDashboardScreen() {
         });
 
         return () => unsubscribe();
-    }, [roomId]);
+    }, [resolvedRoomId]);
 
     const notifications: NotificationItem[] = [
         ...checkins
@@ -497,12 +498,12 @@ export default function ProfessorDashboardScreen() {
     const unreadCount = checkins.filter((c) => c.handRaised).length;
 
     const markAllRead = async () => {
-        if (!roomId) return;
+        if (!resolvedRoomId) return;
         const batch = writeBatch(db);
         checkins
             .filter((c) => c.handRaised)
             .forEach((c) => {
-                batch.update(doc(db, "rooms", roomId, "checkins", c.id), {
+                batch.update(doc(db, "rooms", resolvedRoomId, "checkins", c.id), {
                     handRaised: false,
                 });
             });
@@ -513,34 +514,54 @@ export default function ProfessorDashboardScreen() {
         }
     };
 
+    const goHome = () => {
+        router.replace("/" as any);
+    };
+
+    const confirmAction = (
+        title: string,
+        message: string,
+        onConfirm: () => void | Promise<void>,
+        confirmText = "Continue"
+    ) => {
+        if (Platform.OS === "web" && typeof globalThis.confirm === "function") {
+            const confirmed = globalThis.confirm(`${title}\n\n${message}`);
+            if (confirmed) {
+                void onConfirm();
+            }
+            return;
+        }
+        Alert.alert(title, message, [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: confirmText,
+                style: "destructive",
+                onPress: () => {
+                    void onConfirm();
+                },
+            },
+        ]);
+    };
+
     const endSession = () => {
-        Alert.alert(
+        confirmAction(
             "End Session",
             "This will clear all check-ins and seat assignments for this room. Students will need to re-scan to rejoin.",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "End Session",
-                    style: "destructive",
-                    onPress: async () => {
-                        if (!roomId) return;
-                        try {
-                            const snap = await getDocs(
-                                collection(db, "rooms", roomId, "checkins")
-                            );
-                            const batch = writeBatch(db);
-                            snap.forEach((d) =>
-                                batch.delete(doc(db, "rooms", roomId, "checkins", d.id))
-                            );
-                            await batch.commit();
-                            await clearRoomOccupancy(roomId);
-                        } catch (e) {
-                            console.log("Could not end session:", e);
-                        }
-                        router.dismissAll();
-                    },
-                },
-            ]
+            async () => {
+                if (!resolvedRoomId) return;
+                try {
+                    await endRoomSessionApi(resolvedRoomId);
+                } catch (e) {
+                    console.log("Could not end session:", e);
+                    Alert.alert(
+                        "Could not end session",
+                        "Make sure you are signed in as a professor and try again."
+                    );
+                    return;
+                }
+                goHome();
+            },
+            "End Session"
         );
     };
 
@@ -556,7 +577,7 @@ export default function ProfessorDashboardScreen() {
                 <TouchableOpacity
                     style={styles.actionCard}
                     activeOpacity={0.7}
-                    onPress={() => router.push(`/seating-map?roomId=${roomId}` as any)}
+                    onPress={() => router.push(`/seating-map?roomId=${resolvedRoomId}` as any)}
                 >
                     <View style={[styles.actionIconWrap, styles.mapIconWrap]}>
                         <Text style={styles.actionIconEmoji}>🗺️</Text>
@@ -658,13 +679,11 @@ export default function ProfessorDashboardScreen() {
                 <TouchableOpacity
                     activeOpacity={0.7}
                     onPress={() => {
-                        Alert.alert(
+                        confirmAction(
                             "Exit Without Ending?",
                             "Check-ins will remain in the room. The seating map will show stale data until a new session is started.",
-                            [
-                                { text: "Cancel", style: "cancel" },
-                                { text: "Exit Anyway", style: "destructive", onPress: () => router.dismissAll() },
-                            ]
+                            goHome,
+                            "Exit Anyway"
                         );
                     }}
                     style={styles.exitButton}
