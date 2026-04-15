@@ -54,7 +54,11 @@ interface NotificationItem {
 
 interface ProfessorProfile {
     name: string;
+    title: string;
+    department: string;
     bio: string;
+    officeHours: string;
+    researchInterests: string;
     email: string;
     website: string;
     availability: string;
@@ -87,7 +91,14 @@ function ProfessorProfileSheet({
 }) {
     const [profile, setProfile] = useState<ProfessorProfile | null>(null);
     const [nameText, setNameText] = useState("");
+    const [titleText, setTitleText] = useState("");
+    const [departmentText, setDepartmentText] = useState("");
     const [bioText, setBioText] = useState("");
+    const [officeHoursText, setOfficeHoursText] = useState("");
+    const [researchInterestsText, setResearchInterestsText] = useState("");
+    const [emailText, setEmailText] = useState("");
+    const [websiteText, setWebsiteText] = useState("");
+    const [availabilityText, setAvailabilityText] = useState("");
     const [avatarUri, setAvatarUri] = useState<string | null>(null);
     const [avatarType, setAvatarType] = useState<string>("emoji");
     const [uid, setUid] = useState<string | null>(null);
@@ -97,7 +108,14 @@ function ProfessorProfileSheet({
     const isDirty =
         profile !== null &&
         (nameText !== profile.name ||
+            titleText !== profile.title ||
+            departmentText !== profile.department ||
             bioText !== profile.bio ||
+            officeHoursText !== profile.officeHours ||
+            researchInterestsText !== profile.researchInterests ||
+            emailText !== profile.email ||
+            websiteText !== profile.website ||
+            availabilityText !== profile.availability ||
             avatarUri !== profile.avatarUri);
 
     useEffect(() => {
@@ -114,7 +132,11 @@ function ProfessorProfileSheet({
                 const d = snap.data();
                 const loaded: ProfessorProfile = {
                     name: d.name || "",
+                    title: d.title || "",
+                    department: d.department || "",
                     bio: d.bio || "",
+                    officeHours: d.officeHours || "",
+                    researchInterests: d.researchInterests || "",
                     email: d.email || "",
                     website: d.website || "",
                     availability: d.availability || "",
@@ -124,7 +146,14 @@ function ProfessorProfileSheet({
                 };
                 setProfile(loaded);
                 setNameText(loaded.name);
+                setTitleText(loaded.title);
+                setDepartmentText(loaded.department);
                 setBioText(loaded.bio);
+                setOfficeHoursText(loaded.officeHours);
+                setResearchInterestsText(loaded.researchInterests);
+                setEmailText(loaded.email);
+                setWebsiteText(loaded.website);
+                setAvailabilityText(loaded.availability);
                 setAvatarUri(loaded.avatarUri);
                 setAvatarType(loaded.avatarType);
             }
@@ -166,7 +195,14 @@ function ProfessorProfileSheet({
                 doc(db, "users", uid),
                 {
                     name: nameText.trim() || profile.name,
+                    title: titleText.trim(),
+                    department: departmentText.trim(),
                     bio: bioText,
+                    officeHours: officeHoursText.trim(),
+                    researchInterests: researchInterestsText.trim(),
+                    email: emailText.trim(),
+                    website: websiteText.trim(),
+                    availability: availabilityText.trim(),
                     avatarType,
                     avatarUri: avatarType === "photo" ? avatarUri : null,
                 },
@@ -177,7 +213,14 @@ function ProfessorProfileSheet({
                     ? {
                           ...p,
                           name: nameText.trim() || p.name,
+                          title: titleText.trim(),
+                          department: departmentText.trim(),
                           bio: bioText,
+                          officeHours: officeHoursText.trim(),
+                          researchInterests: researchInterestsText.trim(),
+                          email: emailText.trim(),
+                          website: websiteText.trim(),
+                          availability: availabilityText.trim(),
                           avatarType,
                           avatarUri: avatarType === "photo" ? avatarUri : null,
                       }
@@ -267,6 +310,32 @@ function ProfessorProfileSheet({
                         />
                         <Text style={sheet.nameHint}>tap to edit name</Text>
 
+                        {/* Title + Department */}
+                        <View style={sheet.infoRow}>
+                            <View style={sheet.infoField}>
+                                <Text style={sheet.infoLabel}>Title</Text>
+                                <TextInput
+                                    style={sheet.infoInput}
+                                    value={titleText}
+                                    onChangeText={setTitleText}
+                                    placeholder="e.g. Professor"
+                                    placeholderTextColor="#f09ed8"
+                                    returnKeyType="next"
+                                />
+                            </View>
+                            <View style={[sheet.infoField, { flex: 1.4 }]}>
+                                <Text style={sheet.infoLabel}>Department</Text>
+                                <TextInput
+                                    style={sheet.infoInput}
+                                    value={departmentText}
+                                    onChangeText={setDepartmentText}
+                                    placeholder="e.g. Computer Science"
+                                    placeholderTextColor="#f09ed8"
+                                    returnKeyType="next"
+                                />
+                            </View>
+                        </View>
+
                         {/* About me — whole box is the input */}
                         <View style={sheet.bioBox}>
                             <Text style={sheet.bioLabel}>About me</Text>
@@ -281,19 +350,72 @@ function ProfessorProfileSheet({
                             />
                         </View>
 
+                        {/* Office Hours */}
+                        <View style={sheet.fieldBox}>
+                            <Text style={sheet.bioLabel}>Office Hours</Text>
+                            <TextInput
+                                style={sheet.fieldInput}
+                                value={officeHoursText}
+                                onChangeText={setOfficeHoursText}
+                                placeholder="e.g. Mon & Wed 2–4 pm, Room 305"
+                                placeholderTextColor="#f09ed8"
+                                returnKeyType="next"
+                            />
+                        </View>
+
+                        {/* Research / Teaching Interests */}
+                        <View style={sheet.fieldBox}>
+                            <Text style={sheet.bioLabel}>Research / Teaching Interests</Text>
+                            <TextInput
+                                style={sheet.fieldInput}
+                                value={researchInterestsText}
+                                onChangeText={setResearchInterestsText}
+                                placeholder="e.g. HCI, distributed systems"
+                                placeholderTextColor="#f09ed8"
+                                returnKeyType="next"
+                            />
+                        </View>
+
                         {/* Links */}
                         <View style={sheet.linksSection}>
                             <Text style={sheet.linksLabel}>Links</Text>
-                            <View style={sheet.pillsRow}>
-                                <View style={sheet.pill}>
-                                    <Text style={sheet.pillText}>email</Text>
-                                </View>
-                                <View style={sheet.pill}>
-                                    <Text style={sheet.pillText}>website</Text>
-                                </View>
-                                <View style={sheet.pill}>
-                                    <Text style={sheet.pillText}>availability</Text>
-                                </View>
+                            <View style={sheet.linkField}>
+                                <Text style={sheet.linkChip}>email</Text>
+                                <TextInput
+                                    style={sheet.linkInput}
+                                    value={emailText}
+                                    onChangeText={setEmailText}
+                                    placeholder="your@email.edu"
+                                    placeholderTextColor="#f09ed8"
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    returnKeyType="next"
+                                />
+                            </View>
+                            <View style={sheet.linkField}>
+                                <Text style={sheet.linkChip}>website</Text>
+                                <TextInput
+                                    style={sheet.linkInput}
+                                    value={websiteText}
+                                    onChangeText={setWebsiteText}
+                                    placeholder="https://..."
+                                    placeholderTextColor="#f09ed8"
+                                    keyboardType="url"
+                                    autoCapitalize="none"
+                                    returnKeyType="next"
+                                />
+                            </View>
+                            <View style={sheet.linkField}>
+                                <Text style={sheet.linkChip}>availability</Text>
+                                <TextInput
+                                    style={sheet.linkInput}
+                                    value={availabilityText}
+                                    onChangeText={setAvailabilityText}
+                                    placeholder="calendly link or scheduling note"
+                                    placeholderTextColor="#f09ed8"
+                                    autoCapitalize="none"
+                                    returnKeyType="done"
+                                />
                             </View>
                         </View>
                     </ScrollView>
@@ -905,6 +1027,50 @@ const sheet = StyleSheet.create({
         minHeight: 70,
         width: "100%",
     },
+    // Title + Department row
+    infoRow: {
+        flexDirection: "row",
+        width: "100%",
+        gap: 10,
+        marginBottom: 20,
+    },
+    infoField: {
+        flex: 1,
+        backgroundColor: PINK_BG,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: "#f5c6e4",
+        padding: 10,
+    },
+    infoLabel: {
+        fontSize: 10,
+        fontFamily: monoFont,
+        color: "#aaa",
+        marginBottom: 4,
+        textTransform: "uppercase",
+        letterSpacing: 0.5,
+    },
+    infoInput: {
+        fontSize: 13,
+        fontFamily: monoFont,
+        color: PINK,
+    },
+    // Single-line field boxes (office hours, research interests)
+    fieldBox: {
+        width: "100%",
+        backgroundColor: PINK_BG,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: "#f5c6e4",
+        padding: 14,
+        marginBottom: 16,
+    },
+    fieldInput: {
+        fontSize: 14,
+        fontFamily: monoFont,
+        color: PINK,
+        width: "100%",
+    },
     // Links
     linksSection: {
         width: "100%",
@@ -915,21 +1081,28 @@ const sheet = StyleSheet.create({
         color: "#aaa",
         marginBottom: 10,
     },
-    pillsRow: {
+    linkField: {
         flexDirection: "row",
-        flexWrap: "wrap",
-        gap: 10,
-    },
-    pill: {
+        alignItems: "center",
         backgroundColor: PINK_BG,
-        borderRadius: 20,
+        borderRadius: 12,
         borderWidth: 1,
         borderColor: "#f5c6e4",
-        paddingHorizontal: 18,
-        paddingVertical: 8,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        marginBottom: 10,
+        gap: 10,
     },
-    pillText: {
-        fontSize: 14,
+    linkChip: {
+        fontSize: 12,
+        fontFamily: monoFont,
+        color: PINK,
+        fontWeight: "600",
+        minWidth: 72,
+    },
+    linkInput: {
+        flex: 1,
+        fontSize: 13,
         fontFamily: monoFont,
         color: PINK,
     },
