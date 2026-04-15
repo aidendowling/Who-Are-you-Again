@@ -6,13 +6,16 @@ service cloud.firestore {
     }
 
     function currentUser() {
+      if (!isSignedIn()) {
+        return null;
+      }
       let user = get(/databases/$(database)/documents/users/$(request.auth.uid));
       return user.data != null ? user : null;
     }
 
     function isProfessor() {
       let user = currentUser();
-      return isSignedIn() && user != null && user.data.userType == "professor";
+      return user != null && user.data.userType == "professor";
     }
 
     match /users/{userId} {
