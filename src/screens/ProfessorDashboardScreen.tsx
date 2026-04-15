@@ -433,6 +433,20 @@ export default function ProfessorDashboardScreen() {
     const [checkins, setCheckins] = useState<CheckIn[]>([]);
     const [profileSheetVisible, setProfileSheetVisible] = useState(false);
 
+    // Stamp the room with this professor's uid so students can find the profile.
+    useEffect(() => {
+        if (!roomId) return;
+        const stampPresence = async () => {
+            try {
+                const uid = await ensureAnonymousUid();
+                await setDoc(doc(db, "rooms", roomId), { professorUid: uid }, { merge: true });
+            } catch (e) {
+                console.log("Could not stamp professor presence:", e);
+            }
+        };
+        stampPresence();
+    }, [roomId]);
+
     useEffect(() => {
         if (!roomId) return;
 

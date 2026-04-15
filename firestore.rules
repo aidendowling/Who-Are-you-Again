@@ -14,7 +14,11 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      allow read: if isSignedIn() && (
+        request.auth.uid == userId ||
+        get(/databases/$(database)/documents/users/$(userId)).data.userType == "professor"
+      );
+      allow write: if isSignedIn() && request.auth.uid == userId;
     }
 
     match /rooms/{roomId} {
