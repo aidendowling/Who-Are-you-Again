@@ -78,7 +78,14 @@ export default function ProfessorDashboardScreen() {
 
     const raisedHandsCount = students.filter(s => s.handRaised).length;
 
-    // Map seat numbers to student info
+    // Helper: convert row and col indices to letter-number format (A1, A2, B1, etc)
+    const getSeatLabel = (rowIdx: number, colIdx: number) => {
+        const rowLetter = String.fromCharCode(65 + rowIdx); // 65 = 'A'
+        const colNumber = colIdx + 1;
+        return `${rowLetter}${colNumber}`;
+    };
+
+    // Map seat labels to student info
     const seatMap: { [seat: string]: StudentInfo } = {};
     students.forEach(student => {
         if (student.seat) {
@@ -135,30 +142,30 @@ export default function ProfessorDashboardScreen() {
                         <View key={rowIdx} style={styles.seatRow}>
                             {/* Section 1 */}
                             {[...Array(4)].map((_, colIdx) => {
-                                const seatNum = rowIdx * 12 + colIdx + 1;
-                                const student = seatMap[seatNum.toString()];
+                                const seatLabel = getSeatLabel(rowIdx, colIdx);
+                                const student = seatMap[seatLabel];
                                 return (
-                                    <SeatBox key={seatNum} student={student} seatNum={seatNum} />
+                                    <SeatBox key={seatLabel} student={student} seatLabel={seatLabel} />
                                 );
                             })}
                             {/* Gap */}
                             <View style={styles.seatGap} />
                             {/* Section 2 */}
                             {[...Array(4)].map((_, colIdx) => {
-                                const seatNum = rowIdx * 12 + colIdx + 5;
-                                const student = seatMap[seatNum.toString()];
+                                const seatLabel = getSeatLabel(rowIdx, colIdx + 4);
+                                const student = seatMap[seatLabel];
                                 return (
-                                    <SeatBox key={seatNum} student={student} seatNum={seatNum} />
+                                    <SeatBox key={seatLabel} student={student} seatLabel={seatLabel} />
                                 );
                             })}
                             {/* Gap */}
                             <View style={styles.seatGap} />
                             {/* Section 3 */}
                             {[...Array(4)].map((_, colIdx) => {
-                                const seatNum = rowIdx * 12 + colIdx + 9;
-                                const student = seatMap[seatNum.toString()];
+                                const seatLabel = getSeatLabel(rowIdx, colIdx + 8);
+                                const student = seatMap[seatLabel];
                                 return (
-                                    <SeatBox key={seatNum} student={student} seatNum={seatNum} />
+                                    <SeatBox key={seatLabel} student={student} seatLabel={seatLabel} />
                                 );
                             })}
                         </View>
@@ -197,7 +204,7 @@ export default function ProfessorDashboardScreen() {
     // SeatBox component for seat grid
     import { Pressable } from "react-native";
 
-    function SeatBox({ student, seatNum }: { student?: StudentInfo; seatNum: number }) {
+    function SeatBox({ student, seatLabel }: { student?: StudentInfo; seatLabel: string }) {
         const [showName, setShowName] = useState(false);
         // Add mouse event handlers for web
         const handleMouseEnter = () => setShowName(true);
@@ -217,7 +224,7 @@ export default function ProfessorDashboardScreen() {
                         <Text style={styles.seatEmoji}>{student.emoji}</Text>
                     )
                 ) : (
-                    <Text style={styles.seatNumber}>{seatNum}</Text>
+                    <Text style={styles.seatNumber}>{seatLabel}</Text>
                 )}
                 {/* Ping for raised hand */}
                 {student && student.handRaised && (

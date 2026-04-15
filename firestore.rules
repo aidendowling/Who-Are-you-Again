@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow authenticated users to read/write their own user profile
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.uid == userId;
+    }
+
+    // Room and checkin rules
+    match /rooms/{roomId} {
+      allow read: if request.auth != null;
+
+      // Checkins collection - students check in and professors monitor
+      match /checkins/{checkinId} {
+        // Allow any authenticated user to read all checkins in a room (for live updates)
+        allow read: if request.auth != null;
+
+        // Allow users to write/update their own checkin
+        allow write: if request.auth.uid == checkinId || !exists(/databases/$(database)/documents/rooms/$(roomId)/checkins/$(checkinId));
+
+        // Allow update of handRaised flag for own checkin
+        allow update: if request.auth.uid == checkinId && request.resource.data.diff(resource.data).affectedKeys().equals(['handRaised']);
+      }
+
+      // Seating layout
+      match /layout {
+        allow read: if request.auth != null;
+        allow write: if false; // Only Cloud Functions can write layouts
+      }
+    }
+  }
+}

@@ -108,8 +108,10 @@ export default function QRScannerScreen() {
         setScannedData(data);
         setIsScanning(false);
 
-        // Assign random seat 1-144 for generic codes
-        const randomSeat = Math.floor(Math.random() * 144) + 1;
+        // Assign random seat in A-L, 1-12 format for generic codes
+        const randomRow = String.fromCharCode(65 + Math.floor(Math.random() * 12)); // A-L
+        const randomCol = Math.floor(Math.random() * 12) + 1; // 1-12
+        const randomSeat = `${randomRow}${randomCol}`;
         // Parse QR data — expected format: wh0ru://room/{roomId}/seat/{seatId}
         const match = data.match(/wh0ru:\/\/room\/(.+)\/seat\/(.+)/);
         if (match) {
@@ -130,9 +132,8 @@ export default function QRScannerScreen() {
             }
         } else {
             // If QR doesn't match, send to test room with random seat
-            const seat = randomSeat.toString();
-            console.log("Assigned random seat:", seat);
-            router.push(`/classroom?roomId=test-room&seat=${seat}` as any);
+            console.log("Assigned random seat:", randomSeat);
+            router.push(`/classroom?roomId=test-room&seat=${randomSeat}` as any);
         }
     };
 
@@ -152,7 +153,7 @@ export default function QRScannerScreen() {
     };
 
     const handleSeatSubmit = () => {
-        const seat = seatInput.trim() || "A3";
+        const seat = seatInput.trim() || "A1";
         router.push(`/classroom?roomId=test-room&seat=${seat}` as any);
         setShowSeatInput(false);
         setSeatInput("");
@@ -204,13 +205,14 @@ export default function QRScannerScreen() {
                             </TouchableOpacity>
                             {showSeatInput && (
                                 <View style={{ gap: 8 }}>
-                                    <Text style={{ fontSize: 15, color: '#333', textAlign: 'center' }}>Enter Your Seat Number:</Text>
+                                    <Text style={{ fontSize: 15, color: '#333', textAlign: 'center' }}>Enter Your Seat (e.g. A1, B5):</Text>
                                     <View style={{ flexDirection: 'row', gap: 8 }}>
                                         <View style={{ flex: 1 }}>
                                             <TextInput
                                                 value={seatInput}
                                                 onChangeText={setSeatInput}
-                                                placeholder="Seat Number"
+                                                placeholder="e.g. A1"
+                                                placeholderTextColor="#999"
                                                 style={{
                                                     borderWidth: 1,
                                                     borderColor: '#ccc',
