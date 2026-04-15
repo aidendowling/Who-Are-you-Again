@@ -72,6 +72,15 @@ export async function syncRoomManifest(roomId: string) {
     return result.data;
 }
 
+export async function endRoomSession(roomId: string) {
+    const endSession = httpsCallable<{ roomId: string }, { success: boolean }>(
+        functions,
+        "endRoomSession"
+    );
+    const result = await endSession({ roomId });
+    return result.data;
+}
+
 export async function fetchNearbySeats(roomId: string) {
     const getNearby = httpsCallable<{ roomId: string }, NearbySeatsResponse>(
         functions,

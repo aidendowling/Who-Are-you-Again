@@ -242,6 +242,31 @@ The repo now has a layered test harness instead of relying on manual Expo tappin
 - The test-room bypass is only available in development or when `EXPO_PUBLIC_ENABLE_TEST_SUPPORT=1`
 - To point the Expo app at emulators, set `EXPO_PUBLIC_USE_FIREBASE_EMULATORS=1`
 
+## Generating Seat QR Codes
+
+You can generate a full printable QR package for any classroom layout from the shared seat model:
+
+```bash
+npm run generate:seat-qrs -- --roomId cs4605-default
+```
+
+This writes:
+
+- `index.html` — printable sheet of every seat QR
+- `manifest.csv` — seat-to-tag mapping with QR URLs
+- one SVG per seat, using the same `tagId` shape the scanner and backend expect
+
+Optional layout overrides:
+
+```bash
+npm run generate:seat-qrs -- \
+  --roomId cs4605-default \
+  --rows 12 \
+  --seatsPerSection 4 \
+  --sections 3 \
+  --baseUrl https://app.whoru.edu/checkin
+```
+
 
 ---
 
