@@ -20,8 +20,6 @@ import { db } from "../config/firebase";
 import { doc, collection, onSnapshot, writeBatch, getDoc, setDoc, getDocs, deleteDoc } from "firebase/firestore";
 import { ensureAnonymousUid } from "../utils/auth";
 import { clearRoomOccupancy } from "../lib/seatManifest";
-import * as ImagePicker from "expo-image-picker";
-import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 
 const serifFont = Platform.select({
     ios: "Georgia",
@@ -34,6 +32,8 @@ const monoFont = Platform.select({
     android: "monospace",
     default: "monospace",
 });
+
+const ENABLE_PHOTO_UPLOADS = false;
 
 interface CheckIn {
     id: string;
@@ -133,31 +133,6 @@ function ProfessorProfileSheet({
         }
     };
 
-    const pickPhoto = async () => {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== "granted") {
-            Alert.alert("Permission needed", "Please allow access to your photo library.");
-            return;
-        }
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ["images"],
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.5,
-        });
-        if (!result.canceled && result.assets[0]) {
-            const manipulated = await manipulateAsync(
-                result.assets[0].uri,
-                [{ resize: { width: 200, height: 200 } }],
-                { compress: 0.5, format: SaveFormat.JPEG, base64: true }
-            );
-            if (manipulated.base64) {
-                setAvatarUri(`data:image/jpeg;base64,${manipulated.base64}`);
-                setAvatarType("photo");
-            }
-        }
-    };
-
     const saveAll = async () => {
         if (!uid || !profile) return;
         setSaving(true);
@@ -235,11 +210,7 @@ function ProfessorProfileSheet({
                         keyboardShouldPersistTaps="handled"
                     >
                         {/* Tappable avatar with camera overlay */}
-                        <TouchableOpacity
-                            onPress={pickPhoto}
-                            activeOpacity={0.8}
-                            style={sheet.avatarWrap}
-                        >
+                        <View style={sheet.avatarWrap}>
                             {avatarType === "photo" && avatarUri ? (
                                 <Image source={{ uri: avatarUri }} style={sheet.avatarImage} />
                             ) : (
@@ -249,11 +220,12 @@ function ProfessorProfileSheet({
                                     </Text>
                                 </View>
                             )}
-                            {/* Camera overlay */}
-                            <View style={sheet.cameraOverlay}>
-                                <Text style={sheet.cameraIcon}>📷</Text>
-                            </View>
-                        </TouchableOpacity>
+                            {ENABLE_PHOTO_UPLOADS && (
+                                <View style={sheet.cameraOverlay}>
+                                    <Text style={sheet.cameraIcon}>📷</Text>
+                                </View>
+                            )}
+                        </View>
 
                         {/* Editable name — tap directly on the text */}
                         <TextInput

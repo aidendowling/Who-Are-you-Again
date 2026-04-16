@@ -16,12 +16,11 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { db } from "../config/firebase";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { ensureAnonymousUid } from "../utils/auth";
-import * as ImagePicker from "expo-image-picker";
-import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 
 const EMOJI_OPTIONS = ["😊", "🤓", "😎", "🧑‍💻", "🎨", "🎵", "⚡", "🌟", "🦊", "🐱", "🌈", "🔥", "💡", "📚", "🎮", "🏀"];
 const YEAR_OPTIONS = ["Freshman", "Sophomore", "Junior", "Senior", "Grad Student"];
 const TITLE_OPTIONS = ["Professor", "Assoc. Professor", "Asst. Professor", "Lecturer", "Teaching Assistant"];
+const ENABLE_PHOTO_UPLOADS = false;
 
 const NAVY = "#1e3a5f";
 const serif = Platform.select({ ios: "Georgia", android: "serif", default: "serif" });
@@ -94,40 +93,6 @@ export default function ProfileScreen() {
             );
         }
         setIsLoaded(true);
-    };
-
-    const pickImage = async () => {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== "granted") {
-            Alert.alert("Permission needed", "Please allow access to your photo library to upload a profile picture.");
-            return;
-        }
-
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ["images"],
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.5,
-        });
-
-        if (!result.canceled && result.assets[0]) {
-            try {
-                // Resize to 200x200 and convert to base64 JPEG
-                const manipulated = await manipulateAsync(
-                    result.assets[0].uri,
-                    [{ resize: { width: 200, height: 200 } }],
-                    { compress: 0.5, format: SaveFormat.JPEG, base64: true }
-                );
-                if (manipulated.base64) {
-                    const dataUri = `data:image/jpeg;base64,${manipulated.base64}`;
-                    setAvatarUri(dataUri);
-                    setAvatarType("photo");
-                }
-            } catch (e) {
-                console.log("Image processing error:", e);
-                Alert.alert("Error", "Could not process the image. Please try another photo.");
-            }
-        }
     };
 
     const removePhoto = () => {
@@ -237,21 +202,6 @@ export default function ProfileScreen() {
                                     Preset Icons
                                 </Text>
                             </TouchableOpacity>
-                            <TouchableOpacity
-                                activeOpacity={0.7}
-                                onPress={() => {
-                                    if (avatarUri) {
-                                        setAvatarType("photo");
-                                    } else {
-                                        pickImage();
-                                    }
-                                }}
-                                style={[styles.tab, avatarType === "photo" && styles.tabActive]}
-                            >
-                                <Text style={[styles.tabText, avatarType === "photo" && styles.tabTextActive]}>
-                                    Upload Photo
-                                </Text>
-                            </TouchableOpacity>
                         </View>
 
                         {avatarType === "emoji" && (
@@ -269,11 +219,11 @@ export default function ProfileScreen() {
                             </View>
                         )}
 
-                        {avatarType === "photo" && (
+                        {ENABLE_PHOTO_UPLOADS && avatarType === "photo" && (
                             <View style={styles.photoActions}>
                                 <TouchableOpacity
                                     activeOpacity={0.7}
-                                    onPress={pickImage}
+                                    onPress={() => Alert.alert("Photo uploads disabled", "This demo build uses emoji avatars only.")}
                                     style={styles.photoButton}
                                 >
                                     <Text style={styles.photoButtonText}>

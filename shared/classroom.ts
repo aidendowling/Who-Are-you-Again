@@ -90,6 +90,18 @@ export function createTagId(roomId: string, seatId: string) {
     return `qr-${roomId}-${seatId}`;
 }
 
+export function parseTagId(tagId: string) {
+    const match = tagId.trim().match(/^qr-(.+)-(r\d+c\d+)$/i);
+    if (!match) {
+        return null;
+    }
+
+    return {
+        roomId: match[1],
+        seatId: match[2].toLowerCase(),
+    };
+}
+
 export function buildSeatManifest(roomId: string, layout: LayoutConfig): RoomSeat[] {
     const seats: RoomSeat[] = [];
 

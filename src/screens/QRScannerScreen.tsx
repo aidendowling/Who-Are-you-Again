@@ -22,7 +22,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { checkInToSeat, syncRoomManifest } from "../lib/proximityApi";
 import { parseSeatScanPayload } from "../lib/qrPayload";
-import { buildSeatManifest, DEFAULT_LAYOUT, resolveSeatByLabel } from "../lib/seating";
+import { buildSeatManifest, DEFAULT_LAYOUT, parseTagId, resolveSeatByLabel } from "../lib/seating";
 import { bootstrapTestRoom, isTestSupportEnabled } from "../lib/testSupport";
 
 const NAVY  = "#1e3a5f";
@@ -152,7 +152,11 @@ export default function QRScannerScreen() {
             query(collectionGroup(db, "seatTags"), where("tagId", "==", tagId))
         );
         const first = tagSnap.docs[0];
-        return first?.data()?.roomId as string | undefined;
+        if (first) {
+            return first.data().roomId as string | undefined;
+        }
+
+        return parseTagId(tagId)?.roomId;
     };
 
     const handleStudentCheckIn = async (tagId: string) => {

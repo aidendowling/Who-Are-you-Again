@@ -9,7 +9,7 @@
     "web": "npx expo start --web",
     "web:export": "npx expo export --platform web",
     "web:export:prod": "node scripts/exportWebProd.cjs",
-    "deploy:web": "npm run web:export:prod && npx firebase-tools deploy --only hosting",
+    "deploy:web": "npm run web:export:prod && npx firebase-tools deploy --only hosting,firestore",
     "generate:seat-qrs": "node --import tsx scripts/generateSeatQRCodes.ts",
     "typecheck": "tsc --noEmit && npm --prefix functions run lint",
     "test": "npm run test:domain && npm run test:app",

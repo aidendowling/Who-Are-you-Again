@@ -12,6 +12,7 @@ export {
     indexToColumn,
     legacySeatLabelsFor,
     normalizeSeatLabel,
+    parseTagId,
     resolveSeatByLabel,
     sortSeatsByPosition,
     totalSeatsForLayout,

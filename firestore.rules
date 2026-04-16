@@ -11,36 +11,54 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == "professor";
     }
 
+    function isSelf(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isOccupancyOwner() {
+      return isSignedIn() &&
+        resource != null &&
+        resource.data.uid == request.auth.uid;
+    }
+
+    function writesOwnOccupancy() {
+      return isSignedIn() &&
+        request.resource != null &&
+        request.resource.data.uid == request.auth.uid;
+    }
+
     match /users/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      allow read, write: if isSelf(userId);
+    }
+
+    // Temporary demo rule set for class-project hosting without Cloud Functions.
+    match /layouts/{layoutId} {
+      allow read, write: if isSignedIn();
     }
 
     match /rooms/{roomId} {
       allow read: if isSignedIn();
-      allow write: if isProfessor();
+      allow write: if isSignedIn();
 
       match /seats/{seatId} {
         allow read: if isSignedIn();
-        allow write: if isProfessor();
+        allow write: if isSignedIn();
       }
 
       match /seatTags/{tagId} {
-        allow read: if isProfessor();
-        allow write: if isProfessor();
+        allow read, write: if isSignedIn();
       }
 
       match /checkins/{uid} {
-        allow read: if isProfessor() || (isSignedIn() && request.auth.uid == uid);
-        allow create, delete: if isProfessor();
-        allow update: if isProfessor() || (
-          isSignedIn() &&
-          request.auth.uid == uid &&
-          request.resource.data.diff(resource.data).changedKeys().hasOnly(["handRaised"])
-        );
+        allow read: if isProfessor() || isSelf(uid);
+        allow create, delete: if isProfessor() || isSelf(uid);
+        allow update: if isProfessor() || isSelf(uid);
       }
 
       match /occupancy/{seatId} {
-        allow read, write: if isProfessor();
+        allow read: if isSignedIn();
+        allow create, update: if isProfessor() || writesOwnOccupancy();
+        allow delete: if isProfessor() || isOccupancyOwner();
       }
     }
   }
